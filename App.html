@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>VindexRL – Legal Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Lato:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        navy:    { DEFAULT:'#1e2d4a', deep:'#141e33', mid:'#253659', light:'#2e4270' },
+        accent:  { DEFAULT:'#c0392b', dark:'#992d22', light:'#e04535' },
+        gold:    { DEFAULT:'#d4921a', dark:'#b07a10', light:'#f0b840', pale:'#fdf3dc' },
+      },
+      fontFamily: {
+        display: ['"Playfair Display"','Georgia','serif'],
+        body:    ['Lato','"Helvetica Neue"','sans-serif'],
+      },
+    }
+  }
+}
+</script>
+<style>
+  :root { --sidebar-w: 265px; --header-h: 64px; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Lato', sans-serif; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c8ccdc; border-radius: 10px; }
+
+  #sidebar { transition: left .28s cubic-bezier(.4,0,.2,1); }
+  #main    { transition: margin-left .28s cubic-bezier(.4,0,.2,1); }
+  .nav-item { border-left: 3px solid transparent; transition: all .14s; }
+  .nav-item.active { border-left-color: #c0392b; background: rgba(255,255,255,0.09); color:#fff; font-weight:600; }
+  .nav-item:not(.active):hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.85); }
+  .footer-link:hover { color: #fff !important; }
+  .btn-accent { background:#c0392b; transition: opacity .14s; }
+  .btn-accent:hover { opacity:.86; }
+  .row-hover:hover { background:#f8f9fd; }
+  .swatch:hover { opacity:.85; }
+  .tab-btn { border-bottom:2px solid transparent; transition:all .14s; }
+  .tab-btn.active { color:#c0392b; border-bottom-color:#c0392b; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body class="bg-[#f4f6fb] text-navy">
+<div id="root"></div>
+<script type="text/babel">
+
+/* ── SVG Icon ───────────────────────────────────────────────────────────── */
+const P = {
+  dashboard: 'M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z',
+  cases:     'M20 7H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm-8 9c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm6-9H2V6c0-1.1.9-2 2-2h4.17l2 2H18c1.1 0 2 .9 2 2v1z',
+  clients:   'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z',
+  calendar:  'M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z',
+  documents: 'M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z',
+  billing:   'M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z',
+  reports:   'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z',
+  settings:  'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z',
+  logout:    'M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z',
+  menu:      'M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z',
+  close:     'M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
+  bell:      'M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z',
+  search:    'M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
+  chevron:   'M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z',
+  phone:     'M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z',
+  mail:      'M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z',
+  clock:     'M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z',
+  user:      'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
+  scales:    'M12 3L1 9l11 6 9-4.91V17h2V9M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z',
+  shield:    'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z',
+  award:     'M12 1l2.39 7.26H21l-6.19 4.5 2.39 7.26L12 15.51l-5.2 3.51 2.39-7.26L3 7.26h6.61z',
+  handshake: 'M11 13.03V19c0 .55-.45 1-1 1s-1-.45-1-1v-4.35l-3.88-3.89c-.29-.29-.29-.77 0-1.06.29-.29.77-.29 1.06 0L10 13.52l4.83-4.83c.29-.29.77-.29 1.06 0 .29.29.29.77 0 1.06L11 13.03z',
+  check:     'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
+  star:      'M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z',
+  arrow_up:  'M7 14l5-5 5 5z',
+  arrow_dn:  'M7 10l5 5 5-5z',
+};
+const Ic = ({ n, size=18, color='currentColor', className='' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={color} className={`shrink-0 block ${className}`}>
+    <path d={P[n]||P.scales}/>
+  </svg>
+);
+
+/* ── Logo ───────────────────────────────────────────────────────────────── */
+const Logo = () => (
+  <div className="flex items-center gap-2.5">
+    <div className="w-9 h-9 rounded-md bg-accent flex items-center justify-center shrink-0">
+      <Ic n="scales" size={20} color="#fff"/>
+    </div>
+    <div>
+      <div className="font-display text-[19px] font-bold text-white tracking-widest leading-none">VindexRL</div>
+      <div className="text-[9px] text-white/40 tracking-[0.14em] uppercase mt-0.5">Legal Management</div>
+    </div>
+  </div>
+);
+
+/* ── Nav ────────────────────────────────────────────────────────────────── */
+const NAV = [
+  { id:'dashboard', label:'Dashboard',    icon:'dashboard' },
+  { id:'cases',     label:'Active Cases', icon:'cases',    badge:8 },
+  { id:'clients',   label:'Clients',      icon:'clients' },
+  { id:'calendar',  label:'Calendar',     icon:'calendar' },
+  { id:'documents', label:'Documents',    icon:'documents' },
+  { id:'billing',   label:'Billing',      icon:'billing' },
+  { id:'reports',   label:'Reports',      icon:'reports' },
+  { id:'settings',  label:'Settings',     icon:'settings' },
+];
+
+/* ── Sidebar ────────────────────────────────────────────────────────────── */
+const Sidebar = ({ active, setActive, open, setOpen }) => (
+  <>
+    {open && (
+      <div className="fixed inset-0 bg-black/50 z-[200] backdrop-blur-sm md:hidden"
+           onClick={()=>setOpen(false)}/>
+    )}
+    <aside id="sidebar" className={`fixed top-0 bottom-0 z-[300] flex flex-col bg-navy w-[265px]
+      ${open ? 'left-0' : 'left-[-265px]'} shadow-2xl`}>
+
+      {/* Brand */}
+      <div className="h-16 flex items-center px-5 bg-black/20 border-b border-white/[0.07] shrink-0">
+        <Logo/>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 overflow-y-auto py-3">
+        <SectionLabel text="Main Menu"/>
+        {NAV.slice(0,6).map(item=>(
+          <NavBtn key={item.id} item={item} active={active}
+            onSelect={id=>{setActive(id);setOpen(false);}}/>
+        ))}
+        <SectionLabel text="System" className="mt-2"/>
+        {NAV.slice(6).map(item=>(
+          <NavBtn key={item.id} item={item} active={active}
+            onSelect={id=>{setActive(id);setOpen(false);}}/>
+        ))}
+      </nav>
+
+      {/* Logout */}
+      <div className="border-t border-white/[0.07] py-2 shrink-0">
+        <button className="w-full flex items-center gap-3 px-5 py-2.5 text-white/40
+          hover:text-white hover:bg-white/5 transition-all text-[13px]">
+          <Ic n="logout" size={16}/><span>Sign Out</span>
+        </button>
+      </div>
+    </aside>
+  </>
+);
+
+const SectionLabel = ({ text }) => (
+  <div className="px-5 pt-2 pb-1 text-[9px] font-bold tracking-[0.12em] uppercase text-white/30">
+    {text}
+  </div>
+);
+
+const NavBtn = ({ item, active, onSelect }) => {
+  const on = active === item.id;
+  return (
+    <button onClick={()=>onSelect(item.id)}
+      className={`nav-item w-full flex items-center gap-3 px-5 py-[9px] text-[13px] text-left
+        ${on ? 'active text-white' : 'text-white/55'}`}>
+      <Ic n={item.icon} size={16} color="currentColor"/>
+      <span className="flex-1">{item.label}</span>
+      {item.badge && (
+        <span className="bg-accent text-white text-[10px] font-bold rounded-full px-[7px] py-[2px]">
+          {item.badge}
+        </span>
+      )}
+    </button>
+  );
+};
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+const Header = ({ open, setOpen }) => (
+  <header className="fixed top-0 left-0 right-0 h-16 z-[100] bg-navy
+    border-b border-white/[0.06] flex items-center shadow-lg">
+    <button onClick={()=>setOpen(o=>!o)}
+      className="w-16 h-16 flex items-center justify-center shrink-0
+        text-white hover:bg-black/10 transition-colors">
+      <Ic n={open?'close':'menu'} size={22} color="currentColor"/>
+    </button>
+
+    <div className={`transition-opacity duration-200 shrink-0 pl-1 ${open?'opacity-0':'opacity-100'}`}>
+      <Logo/>
+    </div>
+    <div className="flex-1"/>
+
+    {/* Search */}
+    <div className="hidden sm:flex items-center gap-2 bg-white/10 rounded-lg px-3.5 py-2
+      text-white/50 text-[13px] mr-3">
+      <Ic n="search" size={14} color="currentColor"/>
+      <span>Search cases, clients…</span>
+    </div>
+
+    {/* Bell */}
+    <button className="relative w-10 h-10 rounded-lg flex items-center justify-center
+      text-white/65 hover:bg-black/10 transition-colors mr-1">
+      <Ic n="bell" size={20} color="currentColor"/>
+      <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent
+        border-2 border-navy"/>
+    </button>
+
+    {/* Avatar */}
+    <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center
+      mr-4 shrink-0 border-2 border-white/20 cursor-pointer">
+      <Ic n="user" size={17} color="#fff"/>
+    </div>
+  </header>
+);
+
+/* ── Stat Card ───────────────────────────────────────────────────────────── */
+const variants = {
+  blue:        'bg-navy text-white',
+  blueMid:     'bg-navy-mid text-white',
+  blueLight:   'bg-[#e8edf7] text-navy',
+  yellow:      'bg-gold text-white',
+  yellowLight: 'bg-gold-pale text-[#7a4d00]',
+  white:       'bg-white text-navy',
+};
+const iconBgMap = {
+  blue:'bg-white/10', blueMid:'bg-white/10', blueLight:'bg-navy/10',
+  yellow:'bg-black/15', yellowLight:'bg-gold/20', white:'bg-gold/10',
+};
+const subTextMap = {
+  blue:'text-white/60', blueMid:'text-white/60', blueLight:'text-[#6274a0]',
+  yellow:'text-white/70', yellowLight:'text-[#b87a20]', white:'text-slate-400',
+};
+
+const StatCard = ({ label, value, icon, variant='white', change }) => (
+  <div className={`${variants[variant]} rounded-xl p-5 shadow-sm relative overflow-hidden flex items-start justify-between`}>
+    <div className="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-black/5"/>
+    <div>
+      <div className={`text-[10px] font-bold uppercase tracking-[0.09em] mb-2 ${subTextMap[variant]}`}>{label}</div>
+      <div className="text-[30px] font-bold leading-none">{value}</div>
+      {change && (
+        <div className={`flex items-center gap-0.5 mt-2 text-[12px] ${subTextMap[variant]}`}>
+          <Ic n={change.up?'arrow_up':'arrow_dn'} size={13} color="currentColor"/>
+          {change.text}
+        </div>
+      )}
+    </div>
+    <div className={`${iconBgMap[variant]} w-11 h-11 rounded-xl flex items-center justify-center shrink-0`}>
+      <Ic n={icon} size={22} color="currentColor"/>
+    </div>
+  </div>
+);
+
+/* ── Feature Strip ───────────────────────────────────────────────────────── */
+const FeatureStrip = () => (
+  <div className="grid grid-cols-1 sm:grid-cols-3 rounded-xl overflow-hidden shadow-md">
+    {[
+      { icon:'shield',    title:'Experienced Legal Team',   body:'Our attorneys bring extensive courtroom experience and deep legal expertise to deliver strategic representation.',  bg:'bg-[#e8edf7]', text:'text-navy', sub:'text-[#6274a0]', iconBg:'bg-navy/10' },
+      { icon:'handshake', title:'Client-Focused Approach',  body:'We provide personalized legal strategies, clear communication, and dedicated support tailored to every situation.',   bg:'bg-navy-mid',  text:'text-white', sub:'text-white/60', iconBg:'bg-white/10' },
+      { icon:'award',     title:'Proven Track Record',      body:'With a strong history of successful case outcomes, we deliver results-driven legal solutions built on integrity.',     bg:'bg-gold',      text:'text-white', sub:'text-white/70', iconBg:'bg-black/15' },
+    ].map((item,i)=>(
+      <div key={i} className={`${item.bg} p-7`}>
+        <div className={`${item.iconBg} w-11 h-11 rounded-xl flex items-center justify-center mb-4`}>
+          <Ic n={item.icon} size={22} color="currentColor" className={item.text}/>
+        </div>
+        <div className={`font-display text-[15px] font-semibold mb-2 ${item.text}`}>{item.title}</div>
+        <div className={`text-[12px] leading-[1.7] ${item.sub}`}>{item.body}</div>
+      </div>
+    ))}
+  </div>
+);
+
+/* ── About Panel ─────────────────────────────────────────────────────────── */
+const AboutPanel = () => {
+  const [tab, setTab] = React.useState('mission');
+  const TABS = {
+    mission: { label:'Our Mission', text:'VindexRL is dedicated to delivering reliable counsel, ethical representation, and strategic solutions tailored to every client\'s unique legal needs. We combine deep industry experience and collaborative teamwork to secure strong outcomes and lasting client confidence.' },
+    vision:  { label:'Our Vision',  text:'To be the most trusted legal management platform, empowering law firms to deliver exceptional client outcomes through data-driven insights and streamlined operations across every practice area.' },
+    values:  { label:'Our Values',  text:'Integrity, precision, and client-first thinking define everything we do. We uphold the highest standards of legal ethics while embracing modern technology to serve our clients more effectively.' },
+  };
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 rounded-xl overflow-hidden shadow-md">
+      {/* Left visual */}
+      <div className="bg-navy min-h-[220px] relative flex items-end p-7">
+        <div className="absolute inset-0"
+          style={{background:'repeating-linear-gradient(135deg,#1e2d4a 0,#1e2d4a 14px,#253659 14px,#253659 28px)'}}/>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+          <Ic n="scales" size={44} color="rgba(255,255,255,0.12)"/>
+          <span className="text-[10px] text-white/25 tracking-[0.1em] font-mono">attorney / team photo</span>
+        </div>
+        <div className="relative z-10">
+          <div className="text-[10px] text-white/50 font-bold tracking-[0.1em] uppercase mb-2">Delivering Results</div>
+          <div className="font-display text-[28px] font-bold text-white leading-tight">90+ Successful Cases</div>
+        </div>
+      </div>
+      {/* Right text */}
+      <div className="bg-white p-7">
+        <div className="text-[10px] font-bold tracking-[0.1em] uppercase text-slate-400 mb-2">About Our Firm</div>
+        <h2 className="font-display text-[20px] font-bold text-navy leading-snug mb-5">
+          Our Legal Team Delivering Trusted Client Protection
+        </h2>
+        <div className="flex gap-0 mb-5 border-b-2 border-slate-100">
+          {Object.entries(TABS).map(([k,v])=>(
+            <button key={k} onClick={()=>setTab(k)}
+              className={`tab-btn px-4 py-1.5 text-[12px] font-bold mb-[-2px] ${tab===k?'active':'text-slate-400'}`}>
+              {v.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-[13px] text-slate-500 leading-[1.75]">{TABS[tab].text}</p>
+      </div>
+    </div>
+  );
+};
+
+/* ── Cases Table ─────────────────────────────────────────────────────────── */
+const STATUS = {
+  Active:  'bg-emerald-50 text-emerald-700',
+  Pending: 'bg-gold-pale text-[#926110]',
+  Closed:  'bg-slate-100 text-slate-500',
+  Urgent:  'bg-red-50 text-red-700',
+};
+const CASES = [
+  { id:'VX-2026-001', title:'Morrison v. Peterson',   type:'Civil Litigation', attorney:'J. Carter',  status:'Active',  date:'Apr 18, 2026' },
+  { id:'VX-2026-002', title:'Estate of Williams',     type:'Probate',          attorney:'S. Reeves',  status:'Pending', date:'Apr 15, 2026' },
+  { id:'VX-2026-003', title:'Clarke Employment',      type:'Labor Law',        attorney:'J. Carter',  status:'Urgent',  date:'Apr 12, 2026' },
+  { id:'VX-2026-004', title:'Harrison Corp Merger',   type:'Corporate',        attorney:'M. Torres',  status:'Active',  date:'Apr 10, 2026' },
+  { id:'VX-2026-005', title:'Tanaka Personal Injury', type:'Tort',             attorney:'S. Reeves',  status:'Closed',  date:'Apr 03, 2026' },
+];
+const CasesTable = () => (
+  <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+    <div className="px-6 py-4 flex items-center justify-between border-b border-slate-100">
+      <h3 className="font-display text-[16px] font-semibold text-navy">Recent Cases</h3>
+      <button className="text-[11px] font-bold text-accent border border-accent/20 rounded-md
+        px-3 py-1 hover:bg-accent/10 transition-colors tracking-wide">
+        VIEW ALL →
+      </button>
+    </div>
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="bg-[#f4f6fb]">
+            {['Case ID','Title','Type','Attorney','Status','Date'].map(h=>(
+              <th key={h} className="px-5 py-2.5 text-left text-[10px] font-black uppercase
+                tracking-[0.1em] text-slate-400 whitespace-nowrap">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {CASES.map(c=>(
+            <tr key={c.id} className="border-t border-slate-100 row-hover cursor-pointer">
+              <td className="px-5 py-3.5 text-[11px] text-slate-400 font-semibold whitespace-nowrap">{c.id}</td>
+              <td className="px-5 py-3.5 text-[13px] font-semibold whitespace-nowrap">{c.title}</td>
+              <td className="px-5 py-3.5 text-[12px] text-slate-500 whitespace-nowrap">{c.type}</td>
+              <td className="px-5 py-3.5 text-[12px] text-slate-500 whitespace-nowrap">{c.attorney}</td>
+              <td className="px-5 py-3.5">
+                <span className={`${STATUS[c.status]} text-[11px] font-bold rounded-full px-2.5 py-0.5 whitespace-nowrap`}>
+                  {c.status}
+                </span>
+              </td>
+              <td className="px-5 py-3.5 text-[12px] text-slate-400 whitespace-nowrap">{c.date}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+);
+
+/* ── Track Record ────────────────────────────────────────────────────────── */
+const TrackRecord = () => (
+  <div className="bg-accent rounded-xl p-7 relative overflow-hidden shadow-lg"
+    style={{boxShadow:'0 6px 24px rgba(192,57,43,0.35)'}}>
+    <div className="absolute -right-6 -top-6 w-32 h-32 rounded-full bg-white/10"/>
+    <div className="absolute right-5 -bottom-8 w-20 h-20 rounded-full bg-white/07"/>
+    <div className="text-[10px] font-black uppercase tracking-[0.12em] text-white/75 mb-3">Proven Track Record</div>
+    <div className="font-display text-[52px] font-bold text-white leading-none">90+</div>
+    <div className="text-[13px] text-white/85 mt-1 mb-4">Successful cases</div>
+    <div className="h-px bg-white/20 mb-4"/>
+    <div className="text-[12px] text-white/70 leading-[1.7]">
+      Delivering consistent results through clear advocacy, disciplined execution, and client-focused legal excellence.
+    </div>
+  </div>
+);
+
+/* ── Practice Areas ──────────────────────────────────────────────────────── */
+const AREAS = [
+  { icon:'cases',     label:'Personal Injury', count:12, max:15 },
+  { icon:'clients',   label:'Family Law',      count:8,  max:15 },
+  { icon:'billing',   label:'Criminal Defense',count:5,  max:15 },
+  { icon:'documents', label:'Employment Law',  count:14, max:15 },
+];
+const PracticeAreas = () => (
+  <div className="bg-navy rounded-xl p-6 shadow-md">
+    <h3 className="font-display text-[16px] font-semibold text-white mb-1">Practice Areas</h3>
+    <p className="text-[11px] text-white/40 mb-5">Active case distribution</p>
+    <div className="flex flex-col gap-4">
+      {AREAS.map((a,i)=>(
+        <div key={i} className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+            <Ic n={a.icon} size={15} color="#c0392b"/>
+          </div>
+          <div className="flex-1">
+            <div className="flex justify-between mb-1.5">
+              <span className="text-[12px] text-white/80 font-semibold">{a.label}</span>
+              <span className="text-[11px] text-white/40">{a.count}</span>
+            </div>
+            <div className="h-[3px] bg-white/10 rounded-full">
+              <div className="h-full bg-accent rounded-full transition-all duration-700"
+                style={{width:`${(a.count/a.max)*100}%`}}/>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+/* ── Schedule ────────────────────────────────────────────────────────────── */
+const SCHEDULE = [
+  { time:'09:00', label:'Morrison Hearing',           type:'Hearing',      color:'#d4921a' },
+  { time:'11:30', label:'Client Intake – R. Banks',   type:'Consultation', color:'#2e7d55' },
+  { time:'14:00', label:'Deposition – Clarke v. Apex',type:'Deposition',   color:'#c0392b' },
+  { time:'16:00', label:'Team Strategy Meeting',      type:'Internal',     color:'#4a6bbf' },
+];
+const Schedule = () => (
+  <div className="bg-white rounded-xl p-6 shadow-sm">
+    <h3 className="font-display text-[16px] font-semibold text-navy mb-4">Today's Schedule</h3>
+    <div className="flex flex-col gap-2.5">
+      {SCHEDULE.map((e,i)=>(
+        <div key={i} className="flex items-center gap-4 px-4 py-3 rounded-lg bg-[#f4f6fb]"
+          style={{borderLeft:`3px solid ${e.color}`}}>
+          <div className="text-[12px] font-bold text-slate-400 w-10 shrink-0">{e.time}</div>
+          <div className="flex-1">
+            <div className="text-[13px] font-semibold">{e.label}</div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-wide mt-0.5">{e.type}</div>
+          </div>
+          <div className="w-2 h-2 rounded-full shrink-0" style={{background:e.color}}/>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+/* ── Contact Strip ───────────────────────────────────────────────────────── */
+const ContactStrip = () => (
+  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+    {[
+      { icon:'phone', label:'Need Our Services?', value:'+1 200 300 9000',   bg:'bg-[#e8edf7]',  text:'text-navy',        sub:'text-[#6274a0]', iconBg:'bg-navy/10'  },
+      { icon:'clock', label:'Opening Hours',       value:'Mon–Sat 08:00–20:00', bg:'bg-gold-pale',text:'text-[#7a4d00]', sub:'text-[#b87a20]', iconBg:'bg-gold/20'  },
+      { icon:'mail',  label:'Email Us',            value:'contact@vindexrl.com', bg:'bg-navy',   text:'text-white',      sub:'text-white/55',  iconBg:'bg-white/10' },
+    ].map((item,i)=>(
+      <div key={i} className={`${item.bg} rounded-xl px-5 py-4 flex items-center gap-4 shadow-sm`}>
+        <div className={`${item.iconBg} w-11 h-11 rounded-xl flex items-center justify-center shrink-0`}>
+          <Ic n={item.icon} size={19} color="currentColor" className={item.text}/>
+        </div>
+        <div>
+          <div className={`text-[10px] font-bold uppercase tracking-[0.08em] ${item.sub}`}>{item.label}</div>
+          <div className={`text-[13px] font-bold mt-0.5 ${item.text}`}>{item.value}</div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+/* ── Dashboard ───────────────────────────────────────────────────────────── */
+const Dashboard = () => (
+  <div className="flex flex-col gap-5">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+      <StatCard label="Active Cases"    value="47"     icon="cases"    variant="blue"        change={{up:true, text:'+3 this month'}}/>
+      <StatCard label="Total Clients"   value="284"    icon="clients"  variant="yellow"      change={{up:true, text:'+12 this month'}}/>
+      <StatCard label="Hearings Today"  value="4"      icon="calendar" variant="blueLight"/>
+      <StatCard label="Invoices Due"    value="$18.4k" icon="billing"  variant="yellowLight" change={{up:false,text:'2 overdue'}}/>
+    </div>
+
+    <FeatureStrip/>
+    <AboutPanel/>
+
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5 items-start">
+      <CasesTable/>
+      <div className="flex flex-col gap-5">
+        <TrackRecord/>
+        <PracticeAreas/>
+      </div>
+    </div>
+
+    <Schedule/>
+    <ContactStrip/>
+  </div>
+);
+
+/* ── Placeholder page ────────────────────────────────────────────────────── */
+const PlaceholderPage = ({ pageId }) => (
+  <div className="bg-white rounded-xl p-16 shadow-sm text-center">
+    <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-5">
+      <Ic n={NAV.find(n=>n.id===pageId)?.icon||'cases'} size={28} color="#9098b1"/>
+    </div>
+    <h2 className="font-display text-[22px] text-navy mb-2">
+      {NAV.find(n=>n.id===pageId)?.label}
+    </h2>
+    <p className="text-[13px] text-slate-400 max-w-xs mx-auto leading-relaxed">
+      This section is ready to be populated. Click Dashboard to return.
+    </p>
+  </div>
+);
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+const Footer = () => (
+  <footer className="bg-navy mt-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-7 px-7 pt-10 pb-7">
+      {/* Brand */}
+      <div>
+        <Logo/>
+        <p className="text-[12px] text-white/45 leading-[1.8] mt-4 max-w-[210px]">
+          Trusted legal management platform for modern law firms, delivering clarity, advocacy, and reliable outcomes.
+        </p>
+        <div className="flex gap-1.5 mt-4">
+          {['star','shield','check'].map(ic=>(
+            <button key={ic} className="w-8 h-8 rounded-md bg-white/8 flex items-center justify-center
+              hover:bg-accent/50 transition-colors">
+              <Ic n={ic} size={14} color="#fff"/>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Practice Areas */}
+      <div>
+        <div className="text-white font-bold text-[11px] uppercase tracking-[0.1em] mb-4">Practice Areas</div>
+        {['Personal Injury','Family Law','Criminal Defense','Employment Law','Real Estate','Corporate Law'].map(item=>(
+          <div key={item} className="flex items-center gap-1.5 mb-2 text-[13px] text-white/50 footer-link cursor-pointer">
+            <Ic n="chevron" size={11} color="#c0392b"/>{item}
+          </div>
+        ))}
+      </div>
+
+      {/* Quick Links */}
+      <div>
+        <div className="text-white font-bold text-[11px] uppercase tracking-[0.1em] mb-4">Quick Links</div>
+        {['Dashboard','Active Cases','Client Portal','Documents','Billing & Invoices','Reports'].map(item=>(
+          <div key={item} className="flex items-center gap-1.5 mb-2 text-[13px] text-white/50 footer-link cursor-pointer">
+            <Ic n="chevron" size={11} color="#c0392b"/>{item}
+          </div>
+        ))}
+      </div>
+
+      {/* Contact */}
+      <div>
+        <div className="text-white font-bold text-[11px] uppercase tracking-[0.1em] mb-4">Contact</div>
+        {[
+          { icon:'phone', text:'+1 200 300 9000' },
+          { icon:'mail',  text:'contact@vindexrl.com' },
+          { icon:'clock', text:'Mon–Sat: 08:00 – 20:00' },
+        ].map((item,i)=>(
+          <div key={i} className="flex items-center gap-2.5 mb-3 text-[13px]">
+            <Ic n={item.icon} size={14} color="#c0392b"/>
+            <span className="text-white/55">{item.text}</span>
+          </div>
+        ))}
+        <button className="btn-accent mt-2 px-5 py-2 rounded-md text-white text-[11px]
+          font-bold tracking-wide cursor-pointer"
+          style={{boxShadow:'0 4px 14px rgba(192,57,43,0.45)'}}>
+          BOOK APPOINTMENT
+        </button>
+      </div>
+    </div>
+
+    {/* Bottom bar */}
+    <div className="border-t border-white/[0.08] px-7 py-3.5 flex flex-wrap items-center
+      justify-between gap-2 text-[11px] text-white/30">
+      <span>© 2026 VindexRL Legal Management. All rights reserved.</span>
+      <div className="flex gap-5">
+        {['Privacy Policy','Terms of Service','Cookie Policy'].map(l=>(
+          <span key={l} className="cursor-pointer hover:text-white/75 transition-colors">{l}</span>
+        ))}
+      </div>
+    </div>
+  </footer>
+);
+
+/* ── App Root ─────────────────────────────────────────────────────────────── */
+const App = () => {
+  const saved = (() => { try { return JSON.parse(localStorage.getItem('vindexrl_state')||'{}'); } catch { return {}; } })();
+  const [page, setPage]               = React.useState(saved.page || 'dashboard');
+  const [sidebarOpen, setSidebarOpen] = React.useState(window.innerWidth >= 960);
+
+  React.useEffect(() => {
+    const onResize = () => setSidebarOpen(window.innerWidth >= 960);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  React.useEffect(() => {
+    localStorage.setItem('vindexrl_state', JSON.stringify({page}));
+  }, [page]);
+
+  const shift = sidebarOpen ? '265px' : '0px';
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Header open={sidebarOpen} setOpen={setSidebarOpen}/>
+      <Sidebar active={page} setActive={setPage} open={sidebarOpen} setOpen={setSidebarOpen}/>
+
+      <div id="main" className="flex-1 flex flex-col min-h-screen"
+        style={{marginLeft:shift, marginTop:'64px'}}>
+
+        {/* Breadcrumb */}
+        <div className="bg-white border-b border-slate-100 px-7 py-2.5 flex items-center gap-1.5
+          text-[11px] text-slate-400">
+          <span>VindexRL</span>
+          <Ic n="chevron" size={11} color="#9098b1"/>
+          <span className="text-navy font-bold">{NAV.find(n=>n.id===page)?.label}</span>
+        </div>
+
+        {/* Page header */}
+        <div className="px-7 pt-5 pb-0 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="font-display text-[24px] font-bold text-navy leading-none">
+              {page === 'dashboard' ? 'Good morning, James 👋' : NAV.find(n=>n.id===page)?.label}
+            </h1>
+            <p className="text-[12px] text-slate-400 mt-1.5">
+              {page === 'dashboard'
+                ? 'Saturday, April 19, 2026 · 4 hearings scheduled today'
+                : 'Manage your ' + NAV.find(n=>n.id===page)?.label?.toLowerCase()}
+            </p>
+          </div>
+          {page === 'dashboard' && (
+            <button className="btn-accent flex items-center gap-2 px-5 py-2.5 rounded-lg
+              text-white text-[11px] font-bold tracking-wide"
+              style={{boxShadow:'0 4px 16px rgba(192,57,43,0.4)'}}>
+              <Ic n="cases" size={13} color="#fff"/> NEW CASE
+            </button>
+          )}
+        </div>
+
+        {/* Content */}
+        <main className="flex-1 px-7 py-5">
+          {page === 'dashboard' ? <Dashboard/> : <PlaceholderPage pageId={page}/>}
+        </main>
+
+        <Footer/>
+      </div>
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
