@@ -160,6 +160,35 @@ h1 {
   width: 100%;
 }
 
+/* top info bar lives inside .grid-toolbar and takes remaining space */
+.row-info-bar {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  font-size: 0.8rem;
+  color: #aaa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* bottom info bar is standalone */
+.row-info-bar--bottom {
+  height: 1.6rem;
+  padding: 0 0.5rem;
+}
+
+.row-info-num {
+  font-weight: 500;
+  color: #bbb;
+  margin-right: 0.4rem;
+}
+
+.row-info-text {
+  color: #c0c0c0;
+}
+
 .grid-toolbar {
   display: flex;
   align-items: center;

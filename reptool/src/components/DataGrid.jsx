@@ -24,14 +24,19 @@ function EditingCell({ value, onCommit, onCancel }) {
   )
 }
 
+
 export default function DataGrid({ table, edits, onEdit }) {
   const [editingCell, setEditingCell] = useState(null)
   const [totalPages, setTotalPages] = useState(0)
   const [showGoto, setShowGoto] = useState(false)
+  const [hoveredRow, setHoveredRow] = useState(null)
   const gridApiRef = useRef(null)
 
   const colDefs = useMemo(() => {
     if (!table) return []
+
+    const hasError = (val) => String(val ?? '').toLowerCase().includes('error')
+    const rowHasError = (data) => data && Object.values(data).some(hasError)
 
     const rowNumCol = {
       headerName: '#',
@@ -42,13 +47,20 @@ export default function DataGrid({ table, edits, onEdit }) {
       sortable: false,
       filter: false,
       suppressMovable: true,
-      cellStyle: { color: '#888', fontVariantNumeric: 'tabular-nums' },
+      cellStyle: (params) => ({
+        fontVariantNumeric: 'tabular-nums',
+        color: rowHasError(params.data) ? '#dc2626' : '#888',
+      }),
     }
 
     const dataCols = table.schema.fields.map((f, colIdx) => ({
       field: f.name,
       headerName: f.name,
       editable: false,
+      cellStyle: (params) =>
+        hasError(params.value)
+          ? { borderLeft: '3px solid #dc2626', borderRight: '3px solid #dc2626' }
+          : null,
       cellRenderer: (params) => {
         const rowIdx = params.node.rowIndex
         const isEditing = editingCell?.rowIdx === rowIdx && editingCell?.field === f.name
@@ -98,6 +110,23 @@ export default function DataGrid({ table, edits, onEdit }) {
     if (api) setTotalPages(api.paginationGetTotalPages())
   }, [])
 
+  const onCellMouseOver = useCallback((params) => {
+    if (!table) return
+    const rowIdx = params.node.rowIndex
+    const fields = table.schema.fields
+    // data columns 2, 3, 4 → fields at index 1, 2, 3 (field index 0 is the first data col)
+    const text = [1, 2, 3]
+      .filter(i => i < fields.length)
+      .map(i => {
+        const key = `${rowIdx}:${i}`
+        const col = table.getChild(fields[i].name)
+        return edits.has(key) ? edits.get(key) : col?.get(rowIdx)
+      })
+      .filter(v => v != null && v !== '')
+      .join('  ·  ')
+    setHoveredRow({ num: rowIdx + 1, text })
+  }, [table, edits])
+
   function goToPage(e) {
     e.preventDefault()
     const api = gridApiRef.current
@@ -105,15 +134,22 @@ export default function DataGrid({ table, edits, onEdit }) {
     const val = parseInt(e.currentTarget.elements.page.value, 10)
     if (!isNaN(val) && val >= 1 && val <= totalPages) {
       api.paginationGoToPage(val - 1)
-      setShowGoto(false)
     }
   }
 
   if (!table) return null
 
   return (
-    <div className="grid-wrapper">
+    <div className="grid-wrapper" onMouseLeave={() => setHoveredRow(null)}>
       <div className="grid-toolbar">
+        <div className="row-info-bar">
+          {hoveredRow && (
+            <span>
+              <span className="row-info-num">#{hoveredRow.num}</span>
+              {hoveredRow.text && <span className="row-info-text"> {hoveredRow.text}</span>}
+            </span>
+          )}
+        </div>
         <button
           type="button"
           className={`goto-toggle${showGoto ? ' goto-toggle--active' : ''}`}
@@ -153,8 +189,17 @@ export default function DataGrid({ table, edits, onEdit }) {
         onGridReady={onGridReady}
         onPaginationChanged={onPaginationChanged}
         onCellDoubleClicked={onCellDoubleClicked}
+        onCellMouseOver={onCellMouseOver}
         suppressCellFocus
       />
+      <div className="row-info-bar row-info-bar--bottom">
+        {hoveredRow && (
+          <span>
+            <span className="row-info-num">#{hoveredRow.num}</span>
+            {hoveredRow.text && <span className="row-info-text"> {hoveredRow.text}</span>}
+          </span>
+        )}
+      </div>
     </div>
   )
 }
