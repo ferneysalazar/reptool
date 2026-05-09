@@ -1,16 +1,38 @@
-# React + Vite
+# reptool
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A fast, browser-based spreadsheet viewer and editor for Excel and CSV files.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Drag-and-drop or click to load `.xlsx`, `.xls`, and `.csv` files
+- Instant preview while the full file loads in the background via a Web Worker
+- High-performance data grid powered by AG Grid and Apache Arrow
+- Inline cell editing with change tracking
+- Row numbers with red highlighting for error rows
+- Pagination with on-demand go-to-page control
+- No server required — everything runs in the browser
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- [React 19](https://react.dev/) + [Vite](https://vitejs.dev/)
+- [AG Grid Community](https://www.ag-grid.com/) — data grid
+- [Apache Arrow](https://arrow.apache.org/docs/js/) — columnar in-memory format
+- [SheetJS (xlsx)](https://sheetjs.com/) — Excel parsing
+- [PapaParse](https://www.papaparse.com/) — CSV parsing
+- Web Workers — non-blocking file processing
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm install
+npm run dev
+```
+
+Open http://localhost:5173, then drop an Excel or CSV file onto the page.
+
+## Build
+
+```bash
+npm run build
+npm run preview
+```
