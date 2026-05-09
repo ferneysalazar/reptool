@@ -25,7 +25,10 @@ function EditingCell({ value, onCommit, onCancel }) {
 }
 
 export default function DataGrid({ table, edits, onEdit }) {
-  const [editingCell, setEditingCell] = useState(null) // { rowIdx, field }
+  const [editingCell, setEditingCell] = useState(null)
+  const [totalPages, setTotalPages] = useState(0)
+  const [showGoto, setShowGoto] = useState(false)
+  const gridApiRef = useRef(null)
 
   const colDefs = useMemo(() => {
     if (!table) return []
@@ -82,14 +85,64 @@ export default function DataGrid({ table, edits, onEdit }) {
   }, [table, edits])
 
   const onCellDoubleClicked = useCallback((params) => {
-    if (!params.colDef.field) return // row number column has no field
+    if (!params.colDef.field) return
     setEditingCell({ rowIdx: params.node.rowIndex, field: params.colDef.field })
   }, [])
+
+  const onGridReady = useCallback((params) => {
+    gridApiRef.current = params.api
+  }, [])
+
+  const onPaginationChanged = useCallback(() => {
+    const api = gridApiRef.current
+    if (api) setTotalPages(api.paginationGetTotalPages())
+  }, [])
+
+  function goToPage(e) {
+    e.preventDefault()
+    const api = gridApiRef.current
+    if (!api) return
+    const val = parseInt(e.currentTarget.elements.page.value, 10)
+    if (!isNaN(val) && val >= 1 && val <= totalPages) {
+      api.paginationGoToPage(val - 1)
+      setShowGoto(false)
+    }
+  }
 
   if (!table) return null
 
   return (
     <div className="grid-wrapper">
+      <div className="grid-toolbar">
+        <button
+          type="button"
+          className={`goto-toggle${showGoto ? ' goto-toggle--active' : ''}`}
+          title={showGoto ? 'Hide page jump' : 'Jump to page'}
+          onClick={() => setShowGoto(v => !v)}
+        >
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+            <path d="M2 7.5h11M9 3.5l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+        {showGoto && (
+          <form className="goto-form" onSubmit={goToPage}>
+            <label htmlFor="goto-page">Page</label>
+            <input
+              id="goto-page"
+              name="page"
+              type="number"
+              min={1}
+              max={totalPages}
+              placeholder="1"
+              className="goto-input"
+              autoFocus
+            />
+            <span className="goto-total">of {totalPages}</span>
+            <button type="submit" className="btn btn--primary">Go</button>
+            <button type="button" className="btn btn--ghost" onClick={() => setShowGoto(false)}>Hide</button>
+          </form>
+        )}
+      </div>
       <AgGridReact
         theme={themeQuartz}
         rowData={rowData}
@@ -97,6 +150,8 @@ export default function DataGrid({ table, edits, onEdit }) {
         pagination
         paginationPageSize={50}
         domLayout="autoHeight"
+        onGridReady={onGridReady}
+        onPaginationChanged={onPaginationChanged}
         onCellDoubleClicked={onCellDoubleClicked}
         suppressCellFocus
       />
