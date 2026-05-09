@@ -245,6 +245,19 @@ h1 {
   color: #aaa;
 }
 
+/* Top scrollbar mirror */
+.top-scrollbar {
+  overflow-x: scroll;
+  overflow-y: hidden;
+  height: 12px;
+  width: 100%;
+}
+
+.top-scrollbar-inner {
+  height: 1px;
+  min-width: 100%;
+}
+
 /* Row number column */
 .row-num-plain {
   font-variant-numeric: tabular-nums;

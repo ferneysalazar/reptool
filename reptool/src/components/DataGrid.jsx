@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useRef } from 'react'
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from 'ag-grid-community'
 import RecordPopup from './RecordPopup.jsx'
@@ -36,6 +36,12 @@ export default function DataGrid({ table, edits, onEdit }) {
   const [hoveredRow, setHoveredRow] = useState(null)
   const [popup, setPopup] = useState(null) // { meta, anchor }
   const gridApiRef = useRef(null)
+  const gridWrapperRef = useRef(null)
+  const topScrollRef = useRef(null)
+  const syncingRef = useRef(false)
+  const scrollSyncCleanupRef = useRef(null)
+
+  useEffect(() => () => scrollSyncCleanupRef.current?.(), [])
 
   const colDefs = useMemo(() => {
     if (!table) return []
@@ -134,6 +140,47 @@ export default function DataGrid({ table, edits, onEdit }) {
 
   const onGridReady = useCallback((params) => {
     gridApiRef.current = params.api
+
+    const topScroll = topScrollRef.current
+    const wrapper = gridWrapperRef.current
+    if (!topScroll || !wrapper) return
+
+    const agViewport = wrapper.querySelector('.ag-center-cols-viewport')
+    const agContainer = wrapper.querySelector('.ag-center-cols-container')
+    if (!agViewport || !agContainer) return
+
+    const innerDiv = topScroll.firstChild
+
+    const updateWidth = () => {
+      innerDiv.style.width = agContainer.offsetWidth + 'px'
+    }
+    updateWidth()
+
+    const ro = new ResizeObserver(updateWidth)
+    ro.observe(agContainer)
+
+    const onTopScroll = () => {
+      if (syncingRef.current) return
+      syncingRef.current = true
+      agViewport.scrollLeft = topScroll.scrollLeft
+      syncingRef.current = false
+    }
+
+    const onAgScroll = () => {
+      if (syncingRef.current) return
+      syncingRef.current = true
+      topScroll.scrollLeft = agViewport.scrollLeft
+      syncingRef.current = false
+    }
+
+    topScroll.addEventListener('scroll', onTopScroll)
+    agViewport.addEventListener('scroll', onAgScroll)
+
+    scrollSyncCleanupRef.current = () => {
+      topScroll.removeEventListener('scroll', onTopScroll)
+      agViewport.removeEventListener('scroll', onAgScroll)
+      ro.disconnect()
+    }
   }, [])
 
   const onPaginationChanged = useCallback(() => {
@@ -171,7 +218,7 @@ export default function DataGrid({ table, edits, onEdit }) {
   if (!table) return null
 
   return (
-    <div className="grid-wrapper" onMouseLeave={() => setHoveredRow(null)}>
+    <div className="grid-wrapper" ref={gridWrapperRef} onMouseLeave={() => setHoveredRow(null)}>
       {popup && (
         <RecordPopup
           meta={popup.meta}
@@ -216,6 +263,9 @@ export default function DataGrid({ table, edits, onEdit }) {
             <button type="button" className="btn btn--ghost" onClick={() => setShowGoto(false)}>Hide</button>
           </form>
         )}
+      </div>
+      <div ref={topScrollRef} className="top-scrollbar">
+        <div className="top-scrollbar-inner" />
       </div>
       <AgGridReact
         theme={themeQuartz}
