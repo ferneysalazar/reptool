@@ -50,7 +50,7 @@ export default function App() {
       }
     }
 
-    file.arrayBuffer().then(buf => worker.postMessage({ file: buf }, [buf]))
+    file.arrayBuffer().then(buf => worker.postMessage({ file: buf, fileName: file.name }, [buf]))
   }
 
   const handleEdit = useCallback((rowIdx, colIdx, value) => {

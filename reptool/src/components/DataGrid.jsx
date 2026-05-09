@@ -29,7 +29,20 @@ export default function DataGrid({ table, edits, onEdit }) {
 
   const colDefs = useMemo(() => {
     if (!table) return []
-    return table.schema.fields.map((f, colIdx) => ({
+
+    const rowNumCol = {
+      headerName: '#',
+      valueGetter: (params) => params.node.rowIndex + 1,
+      width: 70,
+      minWidth: 70,
+      maxWidth: 70,
+      sortable: false,
+      filter: false,
+      suppressMovable: true,
+      cellStyle: { color: '#888', fontVariantNumeric: 'tabular-nums' },
+    }
+
+    const dataCols = table.schema.fields.map((f, colIdx) => ({
       field: f.name,
       headerName: f.name,
       editable: false,
@@ -51,6 +64,8 @@ export default function DataGrid({ table, edits, onEdit }) {
         return params.value ?? ''
       },
     }))
+
+    return [rowNumCol, ...dataCols]
   }, [table, editingCell, onEdit])
 
   const rowData = useMemo(() => {
@@ -67,6 +82,7 @@ export default function DataGrid({ table, edits, onEdit }) {
   }, [table, edits])
 
   const onCellDoubleClicked = useCallback((params) => {
+    if (!params.colDef.field) return // row number column has no field
     setEditingCell({ rowIdx: params.node.rowIndex, field: params.colDef.field })
   }, [])
 

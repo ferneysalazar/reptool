@@ -1,48 +1,63 @@
 import * as XLSX from 'xlsx'
-import { tableToIPC, tableFromArrays } from 'apache-arrow'
+import Papa from 'papaparse'
+import { tableToIPC, vectorFromArray, Table, Utf8 } from 'apache-arrow'
+
+const utf8 = new Utf8()
 
 function buildArrowTable(headers, rows) {
   const columns = {}
-  for (const header of headers) {
-    columns[header] = []
-  }
+  for (const header of headers) columns[header] = []
   for (const row of rows) {
     for (let c = 0; c < headers.length; c++) {
-      columns[headers[c]].push(row[c] ?? null)
+      const v = row[c]
+      columns[headers[c]].push(v == null ? null : String(v))
     }
   }
-  return tableFromArrays(columns)
+  const vectors = {}
+  for (const [name, arr] of Object.entries(columns)) {
+    vectors[name] = vectorFromArray(arr, utf8)
+  }
+  return new Table(vectors)
+}
+
+function serializeTable(table) {
+  const ipc = tableToIPC(table)
+  return ipc.buffer.slice(ipc.byteOffset, ipc.byteOffset + ipc.byteLength)
+}
+
+function parseExcel(buffer) {
+  const wb = XLSX.read(new Uint8Array(buffer), { type: 'array' })
+  const sheet = wb.Sheets[wb.SheetNames[0]]
+  return XLSX.utils.sheet_to_json(sheet, { header: 1 })
+}
+
+function parseCsv(buffer) {
+  const text = new TextDecoder().decode(new Uint8Array(buffer))
+  const { data, errors } = Papa.parse(text, { header: false, skipEmptyLines: true })
+  if (errors.length) console.warn('CSV parse warnings:', errors)
+  return data
 }
 
 self.onmessage = ({ data }) => {
   try {
-  const { file } = data
-  const wb = XLSX.read(new Uint8Array(file), { type: 'array' })
-  const sheet = wb.Sheets[wb.SheetNames[0]]
-  const allRows = XLSX.utils.sheet_to_json(sheet, { header: 1 })
+    const { file, fileName } = data
+    const isCsv = fileName.toLowerCase().endsWith('.csv')
+    const allRows = isCsv ? parseCsv(file) : parseExcel(file)
 
-  const headers = allRows[0].map(String)
-  const dataRows = allRows.slice(1)
-  const total = dataRows.length
+    const headers = allRows[0].map(String)
+    const dataRows = allRows.slice(1)
+    const total = dataRows.length
 
-  // Post preview of first 100 rows immediately
-  const previewRows = dataRows.slice(0, 100)
-  const previewTable = buildArrowTable(headers, previewRows)
-  const previewIpc = tableToIPC(previewTable)
-  const previewBuf = previewIpc.buffer.slice(previewIpc.byteOffset, previewIpc.byteOffset + previewIpc.byteLength)
-  self.postMessage({ type: 'preview', ipc: previewBuf, total }, [previewBuf])
+    const previewBuf = serializeTable(buildArrowTable(headers, dataRows.slice(0, 100)))
+    self.postMessage({ type: 'preview', ipc: previewBuf, total }, [previewBuf])
 
-  // Process remaining rows in chunks, posting progress
-  const CHUNK = 200
-  for (let i = 100; i < total; i += CHUNK) {
-    self.postMessage({ type: 'progress', loaded: Math.min(i + CHUNK, total), total })
-  }
+    const CHUNK = 200
+    for (let i = 100; i < total; i += CHUNK) {
+      self.postMessage({ type: 'progress', loaded: Math.min(i + CHUNK, total), total })
+    }
 
-  // Post complete table
-  const fullTable = buildArrowTable(headers, dataRows)
-  const fullIpc = tableToIPC(fullTable)
-  const fullBuf = fullIpc.buffer.slice(fullIpc.byteOffset, fullIpc.byteOffset + fullIpc.byteLength)
-  self.postMessage({ type: 'complete', ipc: fullBuf, total }, [fullBuf])
+    const fullBuf = serializeTable(buildArrowTable(headers, dataRows))
+    self.postMessage({ type: 'complete', ipc: fullBuf, total }, [fullBuf])
   } catch (err) {
     self.postMessage({ type: 'error', message: err.message })
   }

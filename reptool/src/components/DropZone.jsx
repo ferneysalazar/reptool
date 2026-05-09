@@ -1,14 +1,35 @@
 import { useRef, useState } from 'react'
 
+const VALID_EXTENSIONS = ['.xlsx', '.xls', '.csv']
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function isValidFile(file) {
+  return VALID_EXTENSIONS.some(ext => file.name.toLowerCase().endsWith(ext))
+}
+
 export default function DropZone({ onFile, disabled }) {
   const inputRef = useRef(null)
   const [dragging, setDragging] = useState(false)
-  const [fileName, setFileName] = useState(null)
+  const [pending, setPending] = useState(null) // File awaiting confirmation
 
-  function handleFile(file) {
+  function stage(file) {
     if (!file) return
-    setFileName(file.name)
-    onFile(file)
+    setPending(file)
+  }
+
+  function confirm() {
+    onFile(pending)
+    setPending(null)
+  }
+
+  function cancel() {
+    setPending(null)
+    inputRef.current.value = ''
   }
 
   function onDragOver(e) {
@@ -23,12 +44,34 @@ export default function DropZone({ onFile, disabled }) {
   function onDrop(e) {
     e.preventDefault()
     setDragging(false)
-    handleFile(e.dataTransfer.files[0])
+    stage(e.dataTransfer.files[0])
   }
 
   function onChange(e) {
-    handleFile(e.target.files[0])
-    e.target.value = ''
+    stage(e.target.files[0])
+  }
+
+  if (pending) {
+    const valid = isValidFile(pending)
+    return (
+      <div className="drop-zone drop-zone--confirm">
+        <p className="drop-zone-name">{pending.name}</p>
+        <p className="drop-zone-meta">{formatBytes(pending.size)}</p>
+        {!valid && (
+          <p className="drop-zone-warning">
+            Unsupported file type. Only .xlsx, .xls and .csv are accepted.
+          </p>
+        )}
+        <div className="drop-zone-actions">
+          <button className="btn btn--primary" onClick={confirm} disabled={!valid}>
+            Load file
+          </button>
+          <button className="btn btn--ghost" onClick={cancel}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -45,14 +88,11 @@ export default function DropZone({ onFile, disabled }) {
       <input
         ref={inputRef}
         type="file"
-        accept=".xlsx,.xls"
+        accept=".xlsx,.xls,.csv"
         style={{ display: 'none' }}
         onChange={onChange}
       />
-      {fileName
-        ? <p className="drop-zone-name">{fileName}</p>
-        : <p>Drop an Excel file here or <span className="drop-zone-link">click to browse</span></p>
-      }
+      <p>Drop an Excel or CSV file here or <span className="drop-zone-link">click to browse</span></p>
     </div>
   )
 }
