@@ -15,6 +15,7 @@ function buildArrowTable(headers, rows) {
 }
 
 self.onmessage = ({ data }) => {
+  try {
   const { file } = data
   const wb = XLSX.read(new Uint8Array(file), { type: 'array' })
   const sheet = wb.Sheets[wb.SheetNames[0]]
@@ -42,4 +43,7 @@ self.onmessage = ({ data }) => {
   const fullIpc = tableToIPC(fullTable)
   const fullBuf = fullIpc.buffer.slice(fullIpc.byteOffset, fullIpc.byteOffset + fullIpc.byteLength)
   self.postMessage({ type: 'complete', ipc: fullBuf, total }, [fullBuf])
+  } catch (err) {
+    self.postMessage({ type: 'error', message: err.message })
+  }
 }

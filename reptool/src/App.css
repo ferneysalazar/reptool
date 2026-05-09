@@ -95,8 +95,7 @@ h1 {
 
 /* Grid */
 .grid-wrapper {
-  flex: 1;
-  min-height: 400px;
+  width: 100%;
 }
 
 /* Inline cell editor */

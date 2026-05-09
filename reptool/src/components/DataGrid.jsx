@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback, useRef } from 'react'
 import { AgGridReact } from 'ag-grid-react'
-import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community'
+import { AllCommunityModule, ModuleRegistry, themeQuartz } from 'ag-grid-community'
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
@@ -75,10 +75,12 @@ export default function DataGrid({ table, edits, onEdit }) {
   return (
     <div className="grid-wrapper">
       <AgGridReact
+        theme={themeQuartz}
         rowData={rowData}
         columnDefs={colDefs}
         pagination
         paginationPageSize={50}
+        domLayout="autoHeight"
         onCellDoubleClicked={onCellDoubleClicked}
         suppressCellFocus
       />

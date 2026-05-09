@@ -26,6 +26,11 @@ export default function App() {
     )
     workerRef.current = worker
 
+    worker.onerror = (e) => {
+      console.error('Worker error:', e.message, e)
+      setLoadStatus({ state: 'idle', loaded: 0, total: 0 })
+    }
+
     worker.onmessage = ({ data }) => {
       if (data.type === 'preview') {
         setArrowTable(tableFromIPC(data.ipc))
@@ -38,6 +43,10 @@ export default function App() {
       if (data.type === 'complete') {
         setArrowTable(tableFromIPC(data.ipc))
         setLoadStatus({ state: 'done', loaded: data.total, total: data.total })
+      }
+      if (data.type === 'error') {
+        console.error('Worker reported error:', data.message)
+        setLoadStatus({ state: 'idle', loaded: 0, total: 0 })
       }
     }
 
