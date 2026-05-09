@@ -245,6 +245,134 @@ h1 {
   color: #aaa;
 }
 
+/* Row number column */
+.row-num-plain {
+  font-variant-numeric: tabular-nums;
+  color: #aaa;
+  font-size: 0.8rem;
+}
+
+.row-num-plain--clickable,
+.row-num-badge--clickable {
+  cursor: pointer;
+}
+
+.row-num-plain--clickable:hover {
+  color: #7c3aed;
+  text-decoration: underline;
+}
+
+.row-num-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 3px;
+  border-radius: 3px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* Record popup */
+.record-popup {
+  position: fixed;
+  z-index: 1000;
+  min-width: 220px;
+  max-width: 320px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.record-popup__header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.record-popup__title {
+  font-weight: 600;
+  font-size: 0.875rem;
+  flex: 1;
+}
+
+.record-popup__badge--modified {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #7c3aed;
+  color: #fff;
+}
+
+.record-popup__close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #aaa;
+  font-size: 0.75rem;
+  padding: 2px 4px;
+  border-radius: 3px;
+  line-height: 1;
+}
+
+.record-popup__close:hover {
+  background: #f3f4f6;
+  color: #333;
+}
+
+.record-popup__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.record-popup__section-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.record-popup__section-label--error { color: #dc2626; }
+.record-popup__section-label--warning { color: #d97706; }
+
+.record-popup__list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.record-popup__item {
+  font-size: 0.8rem;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.record-popup__item--error {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.record-popup__item--warning {
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.record-popup__empty {
+  font-size: 0.8rem;
+  color: #aaa;
+}
+
 /* Inline cell editor */
 .cell-editor {
   width: 100%;

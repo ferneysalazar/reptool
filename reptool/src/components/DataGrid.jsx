@@ -1,6 +1,10 @@
 import { useMemo, useState, useCallback, useRef } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from 'ag-grid-community'
+import RecordPopup from './RecordPopup.jsx'
+import rawMeta from '../data/recordMeta.json'
+
+const metaByRecord = Object.fromEntries(rawMeta.map(m => [m.record, m]))
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
@@ -30,6 +34,7 @@ export default function DataGrid({ table, edits, onEdit }) {
   const [totalPages, setTotalPages] = useState(0)
   const [showGoto, setShowGoto] = useState(false)
   const [hoveredRow, setHoveredRow] = useState(null)
+  const [popup, setPopup] = useState(null) // { meta, anchor }
   const gridApiRef = useRef(null)
 
   const colDefs = useMemo(() => {
@@ -47,10 +52,36 @@ export default function DataGrid({ table, edits, onEdit }) {
       sortable: false,
       filter: false,
       suppressMovable: true,
-      cellStyle: (params) => ({
-        fontVariantNumeric: 'tabular-nums',
-        color: rowHasError(params.data) ? '#dc2626' : '#888',
-      }),
+      cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
+      cellRenderer: (params) => {
+        const num = params.value
+        const meta = metaByRecord[num]
+        function handleClick(e) {
+          if (!meta) return
+          const rect = e.currentTarget.getBoundingClientRect()
+          setPopup({ meta, anchor: { top: rect.top, bottom: rect.bottom, left: rect.left } })
+        }
+        if (rowHasError(params.data)) {
+          return (
+            <span
+              className={`row-num-badge${meta ? ' row-num-badge--clickable' : ''}`}
+              onClick={meta ? handleClick : undefined}
+              title={meta ? 'Click to view details' : undefined}
+            >
+              {num}
+            </span>
+          )
+        }
+        return (
+          <span
+            className={`row-num-plain${meta ? ' row-num-plain--clickable' : ''}`}
+            onClick={meta ? handleClick : undefined}
+            title={meta ? 'Click to view details' : undefined}
+          >
+            {num}
+          </span>
+        )
+      },
     }
 
     const dataCols = table.schema.fields.map((f, colIdx) => ({
@@ -141,6 +172,13 @@ export default function DataGrid({ table, edits, onEdit }) {
 
   return (
     <div className="grid-wrapper" onMouseLeave={() => setHoveredRow(null)}>
+      {popup && (
+        <RecordPopup
+          meta={popup.meta}
+          anchor={popup.anchor}
+          onClose={() => setPopup(null)}
+        />
+      )}
       <div className="grid-toolbar">
         <div className="row-info-bar">
           {hoveredRow && (

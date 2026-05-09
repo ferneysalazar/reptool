@@ -1,0 +1,32 @@
+[
+  {
+    "record": 1,
+    "modified": false,
+    "errorList": [],
+    "warningList": ["Value slightly out of expected range"]
+  },
+  {
+    "record": 3,
+    "modified": true,
+    "errorList": ["Invalid date format", "Missing required field"],
+    "warningList": ["Duplicate entry detected"]
+  },
+  {
+    "record": 5,
+    "modified": false,
+    "errorList": ["Reference not found"],
+    "warningList": []
+  },
+  {
+    "record": 8,
+    "modified": true,
+    "errorList": [],
+    "warningList": ["Currency mismatch", "Rounding discrepancy"]
+  },
+  {
+    "record": 10,
+    "modified": false,
+    "errorList": ["Invalid date format", "Value exceeds maximum allowed"],
+    "warningList": ["Field deprecated", "Review recommended"]
+  }
+]
