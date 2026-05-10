@@ -3,6 +3,12 @@
 ## Unreleased
 
 ### Added
+- **Show errors only** toggle in the toolbar menu — filters the grid to rows with at least one error cell; edits on filtered rows persist correctly using `recordId` as the stable key
+- **Show toolbar** toggle (renamed from "Show go to page") — reveals a two-component toolbar row with a search filter and a go-to-page form separated by a vertical divider
+- Search component: text input + Search button (blue when input has text, gray when empty) + Reset button that clears the filter
+- Go-to-page button turns blue when the input has a value and resets to gray after navigating
+- Error cells now show a soft `#fff1f1` red background instead of red side borders
+- Record number column on error rows: soft red background with red text; non-error rows keep default styling
 - `recordId` property (1-based) embedded in every row by the worker at load time, used as the stable row identity for edit tracking and row numbering — survives pagination and future filtering without index drift
 - Row number column now bound to `field: 'recordId'` instead of a computed `valueGetter`, so AG Grid reads the value directly from the row data
 

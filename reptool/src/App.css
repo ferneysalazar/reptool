@@ -333,12 +333,33 @@ h1 {
   text-align: center;
 }
 
+.toolbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
 .goto-form {
   display: flex;
   align-items: center;
   gap: 0.4rem;
   font-size: 0.875rem;
   color: #555;
+}
+
+.search-form {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 18px;
+  background: #d1d5db;
+  border-radius: 1px;
+  flex-shrink: 0;
 }
 
 .goto-input {
@@ -358,6 +379,20 @@ h1 {
 
 .goto-total {
   color: #aaa;
+}
+
+.search-input {
+  width: 160px;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 0.875rem;
+  font-family: inherit;
+}
+
+.search-input:focus {
+  outline: 2px solid #429ae5;
+  border-color: transparent;
 }
 
 /* Top scrollbar mirror */

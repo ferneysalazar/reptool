@@ -8,6 +8,8 @@ const metaByRecord = Object.fromEntries(rawMeta.map(m => [m.record, m]))
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
+const hasError = (val) => String(val ?? '').toLowerCase().includes('error')
+
 function EditingCell({ value, onCommit, onCancel }) {
   const inputRef = useRef(null)
 
@@ -32,9 +34,13 @@ function EditingCell({ value, onCommit, onCancel }) {
 export default function DataGrid({ gridData, edits, onEdit, onClear }) {
   const [editingCell, setEditingCell] = useState(null)
   const [totalPages, setTotalPages] = useState(0)
-  const [showGoto, setShowGoto] = useState(false)
+  const [showToolbar, setShowToolbar] = useState(false)
+  const [filterInput, setFilterInput] = useState('')
+  const [filterText, setFilterText] = useState('')
+  const [gotoValue, setGotoValue] = useState('')
   const [showMenu, setShowMenu] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [showErrorsOnly, setShowErrorsOnly] = useState(false)
   const [spacing, setSpacing] = useState('comfortable')
 
   const gridTheme = useMemo(
@@ -67,7 +73,6 @@ export default function DataGrid({ gridData, edits, onEdit, onClear }) {
     if (!gridData) return []
     const { headers } = gridData
 
-    const hasError = (val) => String(val ?? '').toLowerCase().includes('error')
     const rowHasError = (data) => data && Object.values(data).some(hasError)
 
     const rowNumCol = {
@@ -79,7 +84,10 @@ export default function DataGrid({ gridData, edits, onEdit, onClear }) {
       sortable: false,
       filter: false,
       suppressMovable: true,
-      cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
+      cellStyle: (params) => ({
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        ...(rowHasError(params.data) ? { background: '#fff1f1', color: '#dc2626' } : {}),
+      }),
       cellRenderer: (params) => {
         const num = params.value
         const meta = metaByRecord[num]
@@ -88,20 +96,10 @@ export default function DataGrid({ gridData, edits, onEdit, onClear }) {
           const rect = e.currentTarget.getBoundingClientRect()
           setPopup({ meta, anchor: { top: rect.top, bottom: rect.bottom, left: rect.left } })
         }
-        if (rowHasError(params.data)) {
-          return (
-            <span
-              className={`row-num-badge${meta ? ' row-num-badge--clickable' : ''}`}
-              onClick={meta ? handleClick : undefined}
-              title={meta ? 'Click to view details' : undefined}
-            >
-              {num}
-            </span>
-          )
-        }
         return (
           <span
             className={`row-num-plain${meta ? ' row-num-plain--clickable' : ''}`}
+            style={rowHasError(params.data) ? { color: '#dc2626' } : undefined}
             onClick={meta ? handleClick : undefined}
             title={meta ? 'Click to view details' : undefined}
           >
@@ -117,7 +115,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear }) {
       editable: false,
       cellStyle: (params) =>
         hasError(params.value)
-          ? { borderLeft: '3px solid #dc2626', borderRight: '3px solid #dc2626' }
+          ? { background: '#fff1f1' }
           : null,
       cellRenderer: (params) => {
         const recordId = params.data.recordId
@@ -144,19 +142,36 @@ export default function DataGrid({ gridData, edits, onEdit, onClear }) {
   const rowData = useMemo(() => {
     if (!gridData) return []
     const { headers, rows } = gridData
-    if (!edits.size) return rows
-    return rows.map(row => {
-      const id = row.recordId
-      const hasEdit = headers.some((_, c) => edits.has(`${id}:${c}`))
-      if (!hasEdit) return row
-      const newRow = { ...row }
-      for (let c = 0; c < headers.length; c++) {
-        const key = `${id}:${c}`
-        if (edits.has(key)) newRow[headers[c]] = edits.get(key)
-      }
-      return newRow
-    })
-  }, [gridData, edits])
+
+    let result = rows
+
+    if (edits.size) {
+      result = rows.map(row => {
+        const id = row.recordId
+        const hasEdit = headers.some((_, c) => edits.has(`${id}:${c}`))
+        if (!hasEdit) return row
+        const newRow = { ...row }
+        for (let c = 0; c < headers.length; c++) {
+          const key = `${id}:${c}`
+          if (edits.has(key)) newRow[headers[c]] = edits.get(key)
+        }
+        return newRow
+      })
+    }
+
+    if (showErrorsOnly) {
+      result = result.filter(row => headers.some(h => hasError(row[h])))
+    }
+
+    if (filterText) {
+      const term = filterText.toLowerCase()
+      result = result.filter(row =>
+        headers.some(h => String(row[h] ?? '').toLowerCase().includes(term))
+      )
+    }
+
+    return result
+  }, [gridData, edits, showErrorsOnly, filterText])
 
   const onCellDoubleClicked = useCallback((params) => {
     if (!params.colDef.field) return
@@ -232,10 +247,11 @@ export default function DataGrid({ gridData, edits, onEdit, onClear }) {
     e.preventDefault()
     const api = gridApiRef.current
     if (!api) return
-    const val = parseInt(e.currentTarget.elements.page.value, 10)
+    const val = parseInt(gotoValue, 10)
     if (!isNaN(val) && val >= 1 && val <= totalPages) {
       api.paginationGoToPage(val - 1)
     }
+    setGotoValue('')
   }
 
   if (!gridData) return null
@@ -269,22 +285,57 @@ export default function DataGrid({ gridData, edits, onEdit, onClear }) {
             </span>
           )}
         </div>
-        {showGoto && (
-          <form className="goto-form" onSubmit={goToPage}>
-            <label htmlFor="goto-page">Page</label>
-            <input
-              id="goto-page"
-              name="page"
-              type="number"
-              min={1}
-              max={totalPages}
-              placeholder="1"
-              className="goto-input"
-              autoFocus
-            />
-            <span className="goto-total">of {totalPages}</span>
-            <button type="submit" className="btn btn--primary">Go</button>
-          </form>
+        {showToolbar && (
+          <div className="toolbar-controls">
+            <div className="search-form">
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Search…"
+                value={filterInput}
+                onChange={e => setFilterInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && setFilterText(filterInput)}
+              />
+              <button
+                type="button"
+                className="btn"
+                style={filterInput ? { background: '#429ae5', color: '#fff' } : { background: '#e5e7eb', color: '#9ca3af' }}
+                onClick={() => setFilterText(filterInput)}
+              >
+                Search
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => { setFilterInput(''); setFilterText('') }}
+              >
+                Reset
+              </button>
+            </div>
+            <div className="toolbar-separator" />
+            <form className="goto-form" onSubmit={goToPage}>
+              <label htmlFor="goto-page">Page</label>
+              <input
+                id="goto-page"
+                name="page"
+                type="number"
+                min={1}
+                max={totalPages}
+                placeholder="1"
+                className="goto-input"
+                value={gotoValue}
+                onChange={e => setGotoValue(e.target.value)}
+              />
+              <span className="goto-total">of {totalPages}</span>
+              <button
+                type="submit"
+                className="btn"
+                style={gotoValue ? { background: '#429ae5', color: '#fff' } : { background: '#e5e7eb', color: '#9ca3af' }}
+              >
+                Go
+              </button>
+            </form>
+          </div>
         )}
         <div className="toolbar-menu-anchor" ref={menuAnchorRef}>
           <button
@@ -302,10 +353,18 @@ export default function DataGrid({ gridData, edits, onEdit, onClear }) {
               <button
                 type="button"
                 className="toolbar-menu__item"
-                onClick={() => setShowGoto(v => !v)}
+                onClick={() => setShowToolbar(v => !v)}
               >
-                <span className="toolbar-menu__check">{showGoto ? '✓' : ''}</span>
-                Show go to page
+                <span className="toolbar-menu__check">{showToolbar ? '✓' : ''}</span>
+                Show toolbar
+              </button>
+              <button
+                type="button"
+                className="toolbar-menu__item"
+                onClick={() => setShowErrorsOnly(v => !v)}
+              >
+                <span className="toolbar-menu__check">{showErrorsOnly ? '✓' : ''}</span>
+                Show errors only
               </button>
               <div className="toolbar-menu__divider" />
               <button
