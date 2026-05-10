@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+- Removed Apache Arrow dependency entirely — worker now builds plain JS row objects directly and sends them via structured clone; DataGrid consumes them without any intermediate columnar representation, eliminating the duplicate in-memory copy
+- `rowData` fast-path: when there are no edits the original rows array is passed to AG Grid by reference with no re-allocation
+
 ### Added
 - Toolbar hamburger menu replacing the old arrow-button toggle, consolidating grid options in one place
 - **Comfortable mode / Compact mode** spacing toggle in the toolbar menu — mutually exclusive options that switch AG Grid's `rowVerticalPaddingScale` between `1` (8 px padding/side) and `0.5` (4 px padding/side)

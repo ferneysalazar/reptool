@@ -1,5 +1,4 @@
 import { useRef, useState, useCallback } from 'react'
-import { tableFromIPC } from 'apache-arrow'
 import DropZone from './components/DropZone.jsx'
 import StatusBar from './components/StatusBar.jsx'
 import DataGrid from './components/DataGrid.jsx'
@@ -7,15 +6,14 @@ import './App.css'
 
 export default function App() {
   const workerRef = useRef(null)
-  const [arrowTable, setArrowTable] = useState(null)
+  const [gridData, setGridData] = useState(null) // { headers, rows }
   const [loadStatus, setLoadStatus] = useState({ state: 'idle', loaded: 0, total: 0 })
   const [hasPreview, setHasPreview] = useState(false)
   const [edits, setEdits] = useState(new Map())
 
   function handleFile(file) {
-    // Terminate any previous worker
     workerRef.current?.terminate()
-    setArrowTable(null)
+    setGridData(null)
     setEdits(new Map())
     setHasPreview(false)
     setLoadStatus({ state: 'idle', loaded: 0, total: 0 })
@@ -33,7 +31,7 @@ export default function App() {
 
     worker.onmessage = ({ data }) => {
       if (data.type === 'preview') {
-        setArrowTable(tableFromIPC(data.ipc))
+        setGridData({ headers: data.headers, rows: data.rows })
         setHasPreview(true)
         setLoadStatus({ state: 'loading', loaded: 100, total: data.total })
       }
@@ -41,7 +39,7 @@ export default function App() {
         setLoadStatus({ state: 'loading', loaded: data.loaded, total: data.total })
       }
       if (data.type === 'complete') {
-        setArrowTable(tableFromIPC(data.ipc))
+        setGridData({ headers: data.headers, rows: data.rows })
         setLoadStatus({ state: 'done', loaded: data.total, total: data.total })
       }
       if (data.type === 'error') {
@@ -69,7 +67,7 @@ export default function App() {
         total={loadStatus.total}
         hasPreview={hasPreview}
       />
-      <DataGrid table={arrowTable} edits={edits} onEdit={handleEdit} />
+      <DataGrid gridData={gridData} edits={edits} onEdit={handleEdit} />
     </main>
   )
 }

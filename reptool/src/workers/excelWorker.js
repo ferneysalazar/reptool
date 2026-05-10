@@ -1,28 +1,15 @@
 import * as XLSX from 'xlsx'
 import Papa from 'papaparse'
-import { tableToIPC, vectorFromArray, Table, Utf8 } from 'apache-arrow'
 
-const utf8 = new Utf8()
-
-function buildArrowTable(headers, rows) {
-  const columns = {}
-  for (const header of headers) columns[header] = []
-  for (const row of rows) {
+function buildRows(headers, rawRows) {
+  return rawRows.map(row => {
+    const obj = {}
     for (let c = 0; c < headers.length; c++) {
       const v = row[c]
-      columns[headers[c]].push(v == null ? null : String(v))
+      obj[headers[c]] = v == null ? null : String(v)
     }
-  }
-  const vectors = {}
-  for (const [name, arr] of Object.entries(columns)) {
-    vectors[name] = vectorFromArray(arr, utf8)
-  }
-  return new Table(vectors)
-}
-
-function serializeTable(table) {
-  const ipc = tableToIPC(table)
-  return ipc.buffer.slice(ipc.byteOffset, ipc.byteOffset + ipc.byteLength)
+    return obj
+  })
 }
 
 function parseExcel(buffer) {
@@ -48,16 +35,14 @@ self.onmessage = ({ data }) => {
     const dataRows = allRows.slice(1)
     const total = dataRows.length
 
-    const previewBuf = serializeTable(buildArrowTable(headers, dataRows.slice(0, 100)))
-    self.postMessage({ type: 'preview', ipc: previewBuf, total }, [previewBuf])
+    self.postMessage({ type: 'preview', headers, rows: buildRows(headers, dataRows.slice(0, 100)), total })
 
     const CHUNK = 200
     for (let i = 100; i < total; i += CHUNK) {
       self.postMessage({ type: 'progress', loaded: Math.min(i + CHUNK, total), total })
     }
 
-    const fullBuf = serializeTable(buildArrowTable(headers, dataRows))
-    self.postMessage({ type: 'complete', ipc: fullBuf, total }, [fullBuf])
+    self.postMessage({ type: 'complete', headers, rows: buildRows(headers, dataRows), total })
   } catch (err) {
     self.postMessage({ type: 'error', message: err.message })
   }

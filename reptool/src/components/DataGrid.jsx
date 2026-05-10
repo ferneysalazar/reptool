@@ -8,7 +8,6 @@ const metaByRecord = Object.fromEntries(rawMeta.map(m => [m.record, m]))
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
-
 function EditingCell({ value, onCommit, onCancel }) {
   const inputRef = useRef(null)
 
@@ -30,7 +29,7 @@ function EditingCell({ value, onCommit, onCancel }) {
 }
 
 
-export default function DataGrid({ table, edits, onEdit }) {
+export default function DataGrid({ gridData, edits, onEdit }) {
   const [editingCell, setEditingCell] = useState(null)
   const [totalPages, setTotalPages] = useState(0)
   const [showGoto, setShowGoto] = useState(false)
@@ -64,7 +63,8 @@ export default function DataGrid({ table, edits, onEdit }) {
   useEffect(() => () => scrollSyncCleanupRef.current?.(), [])
 
   const colDefs = useMemo(() => {
-    if (!table) return []
+    if (!gridData) return []
+    const { headers } = gridData
 
     const hasError = (val) => String(val ?? '').toLowerCase().includes('error')
     const rowHasError = (data) => data && Object.values(data).some(hasError)
@@ -110,9 +110,9 @@ export default function DataGrid({ table, edits, onEdit }) {
       },
     }
 
-    const dataCols = table.schema.fields.map((f, colIdx) => ({
-      field: f.name,
-      headerName: f.name,
+    const dataCols = headers.map((name, colIdx) => ({
+      field: name,
+      headerName: name,
       editable: false,
       cellStyle: (params) =>
         hasError(params.value)
@@ -120,7 +120,7 @@ export default function DataGrid({ table, edits, onEdit }) {
           : null,
       cellRenderer: (params) => {
         const rowIdx = params.node.rowIndex
-        const isEditing = editingCell?.rowIdx === rowIdx && editingCell?.field === f.name
+        const isEditing = editingCell?.rowIdx === rowIdx && editingCell?.field === name
         if (isEditing) {
           return (
             <EditingCell
@@ -138,20 +138,23 @@ export default function DataGrid({ table, edits, onEdit }) {
     }))
 
     return [rowNumCol, ...dataCols]
-  }, [table, editingCell, onEdit])
+  }, [gridData, editingCell, onEdit])
 
   const rowData = useMemo(() => {
-    if (!table) return []
-    return Array.from({ length: table.numRows }, (_, i) => {
-      const row = {}
-      for (const field of table.schema.fields) {
-        const col = table.getChild(field.name)
-        const key = `${i}:${table.schema.fields.indexOf(field)}`
-        row[field.name] = edits.has(key) ? edits.get(key) : col?.get(i)
+    if (!gridData) return []
+    const { headers, rows } = gridData
+    if (!edits.size) return rows
+    return rows.map((row, i) => {
+      const hasEdit = headers.some((_, c) => edits.has(`${i}:${c}`))
+      if (!hasEdit) return row
+      const newRow = { ...row }
+      for (let c = 0; c < headers.length; c++) {
+        const key = `${i}:${c}`
+        if (edits.has(key)) newRow[headers[c]] = edits.get(key)
       }
-      return row
+      return newRow
     })
-  }, [table, edits])
+  }, [gridData, edits])
 
   const onCellDoubleClicked = useCallback((params) => {
     if (!params.colDef.field) return
@@ -209,21 +212,19 @@ export default function DataGrid({ table, edits, onEdit }) {
   }, [])
 
   const onCellMouseOver = useCallback((params) => {
-    if (!table) return
+    if (!gridData) return
+    const { headers, rows } = gridData
     const rowIdx = params.node.rowIndex
-    const fields = table.schema.fields
-    // data columns 2, 3, 4 → fields at index 1, 2, 3 (field index 0 is the first data col)
     const text = [1, 2, 3]
-      .filter(i => i < fields.length)
+      .filter(i => i < headers.length)
       .map(i => {
         const key = `${rowIdx}:${i}`
-        const col = table.getChild(fields[i].name)
-        return edits.has(key) ? edits.get(key) : col?.get(rowIdx)
+        return edits.has(key) ? edits.get(key) : rows[rowIdx]?.[headers[i]]
       })
       .filter(v => v != null && v !== '')
       .join('  ·  ')
     setHoveredRow({ num: rowIdx + 1, text })
-  }, [table, edits])
+  }, [gridData, edits])
 
   function goToPage(e) {
     e.preventDefault()
@@ -235,7 +236,7 @@ export default function DataGrid({ table, edits, onEdit }) {
     }
   }
 
-  if (!table) return null
+  if (!gridData) return null
 
   return (
     <div className="grid-wrapper" ref={gridWrapperRef} onMouseLeave={() => setHoveredRow(null)}>
