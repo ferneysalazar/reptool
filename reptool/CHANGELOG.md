@@ -2,9 +2,9 @@
 
 ## Unreleased
 
-### Changed
-- Removed Apache Arrow dependency entirely — worker now builds plain JS row objects directly and sends them via structured clone; DataGrid consumes them without any intermediate columnar representation, eliminating the duplicate in-memory copy
-- `rowData` fast-path: when there are no edits the original rows array is passed to AG Grid by reference with no re-allocation
+### Added
+- `recordId` property (1-based) embedded in every row by the worker at load time, used as the stable row identity for edit tracking and row numbering — survives pagination and future filtering without index drift
+- Row number column now bound to `field: 'recordId'` instead of a computed `valueGetter`, so AG Grid reads the value directly from the row data
 
 ### Added
 - Toolbar hamburger menu replacing the old arrow-button toggle, consolidating grid options in one place

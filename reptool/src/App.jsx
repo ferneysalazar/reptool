@@ -51,8 +51,8 @@ export default function App() {
     file.arrayBuffer().then(buf => worker.postMessage({ file: buf, fileName: file.name }, [buf]))
   }
 
-  const handleEdit = useCallback((rowIdx, colIdx, value) => {
-    setEdits(prev => new Map(prev).set(`${rowIdx}:${colIdx}`, value))
+  const handleEdit = useCallback((recordId, colIdx, value) => {
+    setEdits(prev => new Map(prev).set(`${recordId}:${colIdx}`, value))
   }, [])
 
   const handleClear = useCallback(() => {

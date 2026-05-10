@@ -71,8 +71,8 @@ export default function DataGrid({ gridData, edits, onEdit, onClear }) {
     const rowHasError = (data) => data && Object.values(data).some(hasError)
 
     const rowNumCol = {
+      field: 'recordId',
       headerName: '#',
-      valueGetter: (params) => params.node.rowIndex + 1,
       width: 70,
       minWidth: 70,
       maxWidth: 70,
@@ -120,14 +120,14 @@ export default function DataGrid({ gridData, edits, onEdit, onClear }) {
           ? { borderLeft: '3px solid #dc2626', borderRight: '3px solid #dc2626' }
           : null,
       cellRenderer: (params) => {
-        const rowIdx = params.node.rowIndex
-        const isEditing = editingCell?.rowIdx === rowIdx && editingCell?.field === name
+        const recordId = params.data.recordId
+        const isEditing = editingCell?.recordId === recordId && editingCell?.field === name
         if (isEditing) {
           return (
             <EditingCell
               value={params.value}
               onCommit={(val) => {
-                onEdit(rowIdx, colIdx, val)
+                onEdit(recordId, colIdx, val)
                 setEditingCell(null)
               }}
               onCancel={() => setEditingCell(null)}
@@ -145,12 +145,13 @@ export default function DataGrid({ gridData, edits, onEdit, onClear }) {
     if (!gridData) return []
     const { headers, rows } = gridData
     if (!edits.size) return rows
-    return rows.map((row, i) => {
-      const hasEdit = headers.some((_, c) => edits.has(`${i}:${c}`))
+    return rows.map(row => {
+      const id = row.recordId
+      const hasEdit = headers.some((_, c) => edits.has(`${id}:${c}`))
       if (!hasEdit) return row
       const newRow = { ...row }
       for (let c = 0; c < headers.length; c++) {
-        const key = `${i}:${c}`
+        const key = `${id}:${c}`
         if (edits.has(key)) newRow[headers[c]] = edits.get(key)
       }
       return newRow
@@ -159,7 +160,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear }) {
 
   const onCellDoubleClicked = useCallback((params) => {
     if (!params.colDef.field) return
-    setEditingCell({ rowIdx: params.node.rowIndex, field: params.colDef.field })
+    setEditingCell({ recordId: params.data.recordId, field: params.colDef.field })
   }, [])
 
   const onGridReady = useCallback((params) => {
@@ -214,17 +215,17 @@ export default function DataGrid({ gridData, edits, onEdit, onClear }) {
 
   const onCellMouseOver = useCallback((params) => {
     if (!gridData) return
-    const { headers, rows } = gridData
-    const rowIdx = params.node.rowIndex
+    const { headers } = gridData
+    const id = params.data.recordId
     const text = [1, 2, 3]
       .filter(i => i < headers.length)
       .map(i => {
-        const key = `${rowIdx}:${i}`
-        return edits.has(key) ? edits.get(key) : rows[rowIdx]?.[headers[i]]
+        const key = `${id}:${i}`
+        return edits.has(key) ? edits.get(key) : params.data[headers[i]]
       })
       .filter(v => v != null && v !== '')
       .join('  ·  ')
-    setHoveredRow({ num: rowIdx + 1, text })
+    setHoveredRow({ num: id, text })
   }, [gridData, edits])
 
   function goToPage(e) {

@@ -1,9 +1,9 @@
 import * as XLSX from 'xlsx'
 import Papa from 'papaparse'
 
-function buildRows(headers, rawRows) {
-  return rawRows.map(row => {
-    const obj = {}
+function buildRows(headers, rawRows, offset = 0) {
+  return rawRows.map((row, i) => {
+    const obj = { recordId: offset + i + 1 }
     for (let c = 0; c < headers.length; c++) {
       const v = row[c]
       obj[headers[c]] = v == null ? null : String(v)
