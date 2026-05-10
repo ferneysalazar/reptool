@@ -9,6 +9,17 @@ export default function StatusBar({ status, loaded, total, hasPreview }) {
     )
   }
 
+  if (status === 'parsing') {
+    return (
+      <div className="status-bar loading">
+        <div className="status-bar-track">
+          <div className="status-bar-fill status-bar-fill--indeterminate" />
+        </div>
+        <span className="status-bar-text">Reading file…</span>
+      </div>
+    )
+  }
+
   const pct = total > 0 ? Math.round((loaded / total) * 100) : 0
 
   return (

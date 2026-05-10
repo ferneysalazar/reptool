@@ -16,7 +16,7 @@ export default function App() {
     setGridData(null)
     setEdits(new Map())
     setHasPreview(false)
-    setLoadStatus({ state: 'idle', loaded: 0, total: 0 })
+    setLoadStatus({ state: 'parsing', loaded: 0, total: 0 })
 
     const worker = new Worker(
       new URL('./workers/excelWorker.js', import.meta.url),
@@ -55,7 +55,16 @@ export default function App() {
     setEdits(prev => new Map(prev).set(`${rowIdx}:${colIdx}`, value))
   }, [])
 
-  const isLoading = loadStatus.state === 'loading'
+  const handleClear = useCallback(() => {
+    workerRef.current?.terminate()
+    workerRef.current = null
+    setGridData(null)
+    setEdits(new Map())
+    setHasPreview(false)
+    setLoadStatus({ state: 'idle', loaded: 0, total: 0 })
+  }, [])
+
+  const isLoading = loadStatus.state === 'parsing' || loadStatus.state === 'loading'
 
   return (
     <main>
@@ -67,7 +76,7 @@ export default function App() {
         total={loadStatus.total}
         hasPreview={hasPreview}
       />
-      <DataGrid gridData={gridData} edits={edits} onEdit={handleEdit} />
+      <DataGrid gridData={gridData} edits={edits} onEdit={handleEdit} onClear={handleClear} />
     </main>
   )
 }

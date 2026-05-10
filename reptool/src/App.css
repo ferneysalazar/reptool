@@ -120,6 +120,49 @@ h1 {
   background: #f0f0f0;
 }
 
+.btn--danger {
+  background: #dc2626;
+  color: #fff;
+}
+
+.btn--danger:hover {
+  background: #b91c1c;
+}
+
+/* Confirmation dialog */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.confirm-dialog {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  padding: 1.5rem;
+  min-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.confirm-dialog__message {
+  font-size: 0.95rem;
+  color: #1a1a1a;
+  font-weight: 500;
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 /* Status Bar */
 .status-bar {
   font-size: 0.875rem;
@@ -144,6 +187,17 @@ h1 {
   background: #7c3aed;
   border-radius: 3px;
   transition: width 0.3s ease;
+}
+
+.status-bar-fill--indeterminate {
+  width: 40%;
+  transition: none;
+  animation: indeterminate-slide 1.2s ease-in-out infinite;
+}
+
+@keyframes indeterminate-slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
 }
 
 .status-bar-text {
@@ -254,6 +308,15 @@ h1 {
 .toolbar-menu__item:hover {
   background: #f3eeff;
   color: #7c3aed;
+}
+
+.toolbar-menu__item--danger {
+  color: #dc2626;
+}
+
+.toolbar-menu__item--danger:hover {
+  background: #fef2f2;
+  color: #b91c1c;
 }
 
 .toolbar-menu__divider {

@@ -29,11 +29,12 @@ function EditingCell({ value, onCommit, onCancel }) {
 }
 
 
-export default function DataGrid({ gridData, edits, onEdit }) {
+export default function DataGrid({ gridData, edits, onEdit, onClear }) {
   const [editingCell, setEditingCell] = useState(null)
   const [totalPages, setTotalPages] = useState(0)
   const [showGoto, setShowGoto] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const [spacing, setSpacing] = useState('comfortable')
 
   const gridTheme = useMemo(
@@ -240,6 +241,17 @@ export default function DataGrid({ gridData, edits, onEdit }) {
 
   return (
     <div className="grid-wrapper" ref={gridWrapperRef} onMouseLeave={() => setHoveredRow(null)}>
+      {showConfirm && (
+        <div className="confirm-overlay">
+          <div className="confirm-dialog">
+            <p className="confirm-dialog__message">Clear all loaded data?</p>
+            <div className="confirm-dialog__actions">
+              <button className="btn btn--ghost" onClick={() => setShowConfirm(false)}>Cancel</button>
+              <button className="btn btn--danger" onClick={() => { setShowConfirm(false); onClear() }}>Clear</button>
+            </div>
+          </div>
+        </div>
+      )}
       {popup && (
         <RecordPopup
           meta={popup.meta}
@@ -310,6 +322,15 @@ export default function DataGrid({ gridData, edits, onEdit }) {
               >
                 <span className="toolbar-menu__check">{spacing === 'compact' ? '✓' : ''}</span>
                 Compact mode
+              </button>
+              <div className="toolbar-menu__divider" />
+              <button
+                type="button"
+                className="toolbar-menu__item toolbar-menu__item--danger"
+                onClick={() => { setShowMenu(false); setShowConfirm(true) }}
+              >
+                <span className="toolbar-menu__check" />
+                Clear data
               </button>
             </div>
           )}
