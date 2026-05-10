@@ -8,6 +8,7 @@ const metaByRecord = Object.fromEntries(rawMeta.map(m => [m.record, m]))
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
+
 function EditingCell({ value, onCommit, onCancel }) {
   const inputRef = useRef(null)
 
@@ -33,13 +34,32 @@ export default function DataGrid({ table, edits, onEdit }) {
   const [editingCell, setEditingCell] = useState(null)
   const [totalPages, setTotalPages] = useState(0)
   const [showGoto, setShowGoto] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
+  const [spacing, setSpacing] = useState('comfortable')
+
+  const gridTheme = useMemo(
+    () => themeQuartz.withParams({ rowVerticalPaddingScale: spacing === 'compact' ? 0.5 : 1 }),
+    [spacing]
+  )
   const [hoveredRow, setHoveredRow] = useState(null)
   const [popup, setPopup] = useState(null) // { meta, anchor }
   const gridApiRef = useRef(null)
   const gridWrapperRef = useRef(null)
   const topScrollRef = useRef(null)
+  const menuAnchorRef = useRef(null)
   const syncingRef = useRef(false)
   const scrollSyncCleanupRef = useRef(null)
+
+  useEffect(() => {
+    if (!showMenu) return
+    function handleOutsideClick(e) {
+      if (menuAnchorRef.current && !menuAnchorRef.current.contains(e.target)) {
+        setShowMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [showMenu])
 
   useEffect(() => () => scrollSyncCleanupRef.current?.(), [])
 
@@ -235,16 +255,6 @@ export default function DataGrid({ table, edits, onEdit }) {
             </span>
           )}
         </div>
-        <button
-          type="button"
-          className={`goto-toggle${showGoto ? ' goto-toggle--active' : ''}`}
-          title={showGoto ? 'Hide page jump' : 'Jump to page'}
-          onClick={() => setShowGoto(v => !v)}
-        >
-          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
-            <path d="M2 7.5h11M9 3.5l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
         {showGoto && (
           <form className="goto-form" onSubmit={goToPage}>
             <label htmlFor="goto-page">Page</label>
@@ -260,15 +270,55 @@ export default function DataGrid({ table, edits, onEdit }) {
             />
             <span className="goto-total">of {totalPages}</span>
             <button type="submit" className="btn btn--primary">Go</button>
-            <button type="button" className="btn btn--ghost" onClick={() => setShowGoto(false)}>Hide</button>
           </form>
         )}
+        <div className="toolbar-menu-anchor" ref={menuAnchorRef}>
+          <button
+            type="button"
+            className={`hamburger-btn${showMenu ? ' hamburger-btn--active' : ''}`}
+            aria-label="Menu"
+            onClick={() => setShowMenu(v => !v)}
+          >
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+              <path d="M2 4.5h11M2 7.5h11M2 10.5h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </button>
+          {showMenu && (
+            <div className="toolbar-menu">
+              <button
+                type="button"
+                className="toolbar-menu__item"
+                onClick={() => setShowGoto(v => !v)}
+              >
+                <span className="toolbar-menu__check">{showGoto ? '✓' : ''}</span>
+                Show go to page
+              </button>
+              <div className="toolbar-menu__divider" />
+              <button
+                type="button"
+                className="toolbar-menu__item"
+                onClick={() => setSpacing('comfortable')}
+              >
+                <span className="toolbar-menu__check">{spacing === 'comfortable' ? '✓' : ''}</span>
+                Comfortable mode
+              </button>
+              <button
+                type="button"
+                className="toolbar-menu__item"
+                onClick={() => setSpacing('compact')}
+              >
+                <span className="toolbar-menu__check">{spacing === 'compact' ? '✓' : ''}</span>
+                Compact mode
+              </button>
+            </div>
+          )}
+        </div>
       </div>
       <div ref={topScrollRef} className="top-scrollbar">
         <div className="top-scrollbar-inner" />
       </div>
       <AgGridReact
-        theme={themeQuartz}
+        theme={gridTheme}
         rowData={rowData}
         columnDefs={colDefs}
         pagination

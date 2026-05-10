@@ -197,7 +197,12 @@ h1 {
   min-height: 2rem;
 }
 
-.goto-toggle {
+.toolbar-menu-anchor {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.hamburger-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -209,13 +214,60 @@ h1 {
   color: #bbb;
   cursor: pointer;
   transition: color 0.15s, background 0.15s;
-  flex-shrink: 0;
 }
 
-.goto-toggle:hover,
-.goto-toggle--active {
+.hamburger-btn:hover,
+.hamburger-btn--active {
   color: #7c3aed;
   background: #f3eeff;
+}
+
+.toolbar-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 200;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 7px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  min-width: 216px;
+  padding: 4px;
+}
+
+.toolbar-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 6px 10px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: #333;
+  cursor: pointer;
+  text-align: left;
+}
+
+.toolbar-menu__item:hover {
+  background: #f3eeff;
+  color: #7c3aed;
+}
+
+.toolbar-menu__divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 4px 6px;
+}
+
+.toolbar-menu__check {
+  width: 14px;
+  font-size: 0.85rem;
+  color: #7c3aed;
+  flex-shrink: 0;
+  text-align: center;
 }
 
 .goto-form {
