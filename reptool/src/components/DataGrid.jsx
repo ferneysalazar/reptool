@@ -159,15 +159,15 @@ export default function DataGrid({ gridData, edits, onEdit, onClear }) {
       })
     }
 
-    if (showErrorsOnly) {
-      result = result.filter(row => headers.some(h => hasError(row[h])))
-    }
-
-    if (filterText) {
+    if (showErrorsOnly || filterText) {
       const term = filterText.toLowerCase()
-      result = result.filter(row =>
-        headers.some(h => String(row[h] ?? '').toLowerCase().includes(term))
-      )
+      result = result.filter(row => {
+        const errorCols = headers.filter(h => hasError(row[h]))
+        if (showErrorsOnly && errorCols.length === 0) return false
+        if (!filterText) return true
+        const searchCols = showErrorsOnly ? errorCols : headers
+        return searchCols.some(h => String(row[h] ?? '').toLowerCase().includes(term))
+      })
     }
 
     return result

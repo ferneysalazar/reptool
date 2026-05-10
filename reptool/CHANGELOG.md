@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Changed
+- Search filter now scopes to error cells when **Show errors only** is active — the search term must match one of the flagged cell values, not any cell in the row; both filters are evaluated in a single pass
+
 ### Added
 - **Show errors only** toggle in the toolbar menu — filters the grid to rows with at least one error cell; edits on filtered rows persist correctly using `recordId` as the stable key
 - **Show toolbar** toggle (renamed from "Show go to page") — reveals a two-component toolbar row with a search filter and a go-to-page form separated by a vertical divider
