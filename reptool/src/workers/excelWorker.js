@@ -51,12 +51,27 @@ function findDataSheet(wb) {
   return null
 }
 
-function buildRows(headers, rawRows, offset = 0) {
+// Excel stores dates as days since Dec 30 1899 (accounts for the 1900 leap-year bug).
+function excelSerialToDate(serial) {
+  const date = new Date(Math.round((serial - 25569) * 86400 * 1000))
+  const y = date.getUTCFullYear()
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(date.getUTCDate()).padStart(2, '0')
+  return `${y}/${m}/${d}`
+}
+
+function buildRows(headers, rawRows, colTypes = [], offset = 0) {
   return rawRows.map((row, i) => {
     const obj = { recordId: offset + i + 1 }
     for (let c = 0; c < headers.length; c++) {
       const v = row[c]
-      obj[headers[c]] = v == null ? null : String(v)
+      if (v == null) {
+        obj[headers[c]] = null
+      } else if (colTypes[c] === 'date' && typeof v === 'number') {
+        obj[headers[c]] = excelSerialToDate(v)
+      } else {
+        obj[headers[c]] = String(v)
+      }
     }
     return obj
   })
@@ -101,17 +116,18 @@ self.onmessage = ({ data }) => {
     const headers = moduleColumns
       ? moduleColumns.map(c => c.group ? `${c.group} ${c.columnName}` : c.columnName)
       : (allRows[headerIdx] ?? []).map(String)
+    const colTypes = moduleColumns ? moduleColumns.map(c => c.type) : []
     const dataRows = allRows.slice(headerIdx + 1)
     const total = dataRows.length
 
-    self.postMessage({ type: 'preview', headers, rows: buildRows(headers, dataRows.slice(0, 100)), total, module })
+    self.postMessage({ type: 'preview', headers, rows: buildRows(headers, dataRows.slice(0, 100), colTypes), total, module })
 
     const CHUNK = 200
     for (let i = 100; i < total; i += CHUNK) {
       self.postMessage({ type: 'progress', loaded: Math.min(i + CHUNK, total), total })
     }
 
-    self.postMessage({ type: 'complete', headers, rows: buildRows(headers, dataRows), total, module })
+    self.postMessage({ type: 'complete', headers, rows: buildRows(headers, dataRows, colTypes), total, module })
   } catch (err) {
     self.postMessage({ type: 'error', message: err.message })
   }

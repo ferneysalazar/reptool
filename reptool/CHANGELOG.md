@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+- **FATCA / CRS module detection** — on file load the worker scans XLSX sheets (4th → 1st) or CSV rows for a known header signature, then validates all columns positionally using a normalised `contains` check (trims, lowercases, collapses internal whitespace) to tolerate extra characters like `*` or multi-space gaps
+- When a module is detected, canonical column names from `fatcaModuleColumns` / `crsModuleColumns` replace the raw file headers in the grid; columns beyond the module array length are discarded
+- Excel serial date conversion — date-typed columns (`type: "date"`) whose raw cell value is a number are automatically converted to `YYYY/MM/DD` using the Excel epoch (Dec 30 1899, UTC)
+- Module badge in the datagrid toolbar (purple for FATCA, blue for CRS) and in the status bar; unrecognised files show a red warning
+- Column headers prefixed with the column group (`AH`, `CP`) when a module is detected; account columns with no group are left unprefixed
+- `moduleColumns.js` — two exported arrays (`fatcaModuleColumns`, `crsModuleColumns`) where each entry carries `columnNumber`, `columnName`, `type` (`string` | `date`), and `group` (`AH` | `CP` | `""`)
+
 ### Changed
 - Search filter now scopes to error cells when **Show errors only** is active — the search term must match one of the flagged cell values, not any cell in the row; both filters are evaluated in a single pass
 
