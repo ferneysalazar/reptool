@@ -3,7 +3,7 @@ import Papa from 'papaparse'
 import { fatcaModuleColumns, crsModuleColumns } from '../data/moduleColumns.js'
 
 // First 3 cols are identical in both modules — used to locate the header row
-const HEADER_SIGNATURE = fatcaModuleColumns.slice(0, 3)
+const HEADER_SIGNATURE = fatcaModuleColumns.slice(0, 3).map(c => c.columnName)
 
 function norm(s) {
   return String(s ?? '').toLowerCase().trim().replace(/\s+/g, ' ')
@@ -27,7 +27,7 @@ function findHeaderRowIndex(rows) {
 // Only the first moduleColumns.length file columns are evaluated; extras are ignored.
 function matchesModule(fileHeaders, moduleColumns) {
   for (let i = 0; i < moduleColumns.length; i++) {
-    if (!norm(fileHeaders[i] ?? '').includes(norm(moduleColumns[i]))) return false
+    if (!norm(fileHeaders[i] ?? '').includes(norm(moduleColumns[i].columnName))) return false
   }
   return true
 }
@@ -98,7 +98,7 @@ self.onmessage = ({ data }) => {
     // When module detected, use canonical clean names and cap columns to module array length.
     // buildRows iterates 0..headers.length-1, so extra file columns are automatically ignored.
     const moduleColumns = module === 'fatca' ? fatcaModuleColumns : module === 'crs' ? crsModuleColumns : null
-    const headers = moduleColumns ?? (allRows[headerIdx] ?? []).map(String)
+    const headers = moduleColumns ? moduleColumns.map(c => c.columnName) : (allRows[headerIdx] ?? []).map(String)
     const dataRows = allRows.slice(headerIdx + 1)
     const total = dataRows.length
 
