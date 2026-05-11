@@ -12,10 +12,9 @@
 - Default pagination page size changed from 50 to **20 rows**
 - Header row scan extended from 2 rows to **10 rows** to tolerate files with metadata rows above the column headers
 - Module detection (`matchesModule`) now checks only up to the number of columns the file actually has, preventing false negatives on partial exports; requires at least 4 columns to distinguish FATCA from CRS
-
-### Changed
-- Added brief description comments to all methods in `DataGrid`, `DropZone`, `RecordPopup`, `FormViewPopup` and `excelWorker`
+- Search now fires on **button click or Enter** instead of on every keystroke; input change clears any pending validation message
 - Search always scans all column values of a row even when **Show errors only** is active — both filters are independent and stack (error rows that also match the search term)
+- Added brief description comments to all methods in `DataGrid`, `DropZone`, `RecordPopup`, `FormViewPopup` and `excelWorker`
 
 ### Added
 - **Form view popup** — "Allow Form view" toggle in the toolbar menu; when active, hovering a row shows a 🖹 icon in the record number cell; clicking it opens a modal with all columns listed as label + input rows (vertical scrollbar for 50+ fields); "Update Record" applies only changed values to the grid via the existing edit mechanism; "Cancel" closes without saving
@@ -26,9 +25,6 @@
 - Module badge in the datagrid toolbar (purple for FATCA, blue for CRS) and in the status bar; unrecognised files show a red warning
 - Column headers prefixed with the column group (`AH`, `CP`) when a module is detected; account columns with no group are left unprefixed
 - `moduleColumns.js` — two exported arrays (`fatcaModuleColumns`, `crsModuleColumns`) where each entry carries `columnNumber`, `columnName`, `type` (`string` | `date`), and `group` (`AH` | `CP` | `""`)
-
-### Changed
-- Search filter now scopes to error cells when **Show errors only** is active — the search term must match one of the flagged cell values, not any cell in the row; both filters are evaluated in a single pass
 
 ### Added
 - **Show errors only** toggle in the toolbar menu — filters the grid to rows with at least one error cell; edits on filtered rows persist correctly using `recordId` as the stable key
