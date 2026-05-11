@@ -23,9 +23,9 @@ export default function FormViewPopup({ recordId, headers, initialValues, onSave
           <button className="form-popup__close" onClick={onClose} title="Close">✕</button>
         </div>
         <div className="form-popup__body">
-          {/* Renders one labelled input per column */}
+          {/* Renders one labelled input per column; CP group rows get a subtle gray background */}
           {headers.map((header, i) => (
-            <div key={i} className="form-popup__field">
+            <div key={i} className={`form-popup__field${header.startsWith('CP ') ? ' form-popup__field--cp' : ''}`}>
               <label className="form-popup__label" title={header}>{header}</label>
               <input
                 className="form-popup__input"

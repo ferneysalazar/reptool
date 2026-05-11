@@ -514,6 +514,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
         columnDefs={colDefs}
         pagination
         paginationPageSize={20}
+        paginationPageSizeSelector={[10, 20, 50, 100]}
         domLayout="autoHeight"
         onGridReady={onGridReady}
         onPaginationChanged={onPaginationChanged}

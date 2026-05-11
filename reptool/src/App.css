@@ -657,7 +657,17 @@ h1 {
   display: grid;
   grid-template-columns: 1fr 1fr;
   align-items: center;
-  gap: 0.5rem;
+  gap: 1rem;
+}
+
+.form-popup__field--cp {
+  background: #f3f4f6;
+  margin-left: -1.1rem;
+  margin-right: -1.1rem;
+  padding-left: 1.1rem;
+  padding-right: 1.1rem;
+  padding-top: 0.2rem;
+  padding-bottom: 0.2rem;
 }
 
 .form-popup__label {
@@ -667,6 +677,7 @@ h1 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: right;
 }
 
 .form-popup__input {
