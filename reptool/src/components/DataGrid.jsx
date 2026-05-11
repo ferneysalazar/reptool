@@ -2,6 +2,7 @@ import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from 'ag-grid-community'
 import RecordPopup from './RecordPopup.jsx'
+import FormViewPopup from './FormViewPopup.jsx'
 import rawMeta from '../data/recordMeta.json'
 
 const metaByRecord = Object.fromEntries(rawMeta.map(m => [m.record, m]))
@@ -41,6 +42,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
   const [showMenu, setShowMenu] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [showErrorsOnly, setShowErrorsOnly] = useState(false)
+  const [allowFormView, setAllowFormView] = useState(false)
   const [spacing, setSpacing] = useState('comfortable')
 
   const gridTheme = useMemo(
@@ -48,13 +50,16 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
     [spacing]
   )
   const [hoveredRow, setHoveredRow] = useState(null)
-  const [popup, setPopup] = useState(null) // { meta, anchor }
+  const [popup, setPopup] = useState(null)      // { meta, anchor }
+  const [formPopup, setFormPopup] = useState(null) // { recordId, rowData }
   const gridApiRef = useRef(null)
   const gridWrapperRef = useRef(null)
   const topScrollRef = useRef(null)
   const menuAnchorRef = useRef(null)
   const syncingRef = useRef(false)
   const scrollSyncCleanupRef = useRef(null)
+  const allowFormViewRef = useRef(false)
+  const hoveredRecordIdRef = useRef(null)
 
   useEffect(() => {
     if (!showMenu) return
@@ -91,12 +96,13 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
       cellRenderer: (params) => {
         const num = params.value
         const meta = metaByRecord[num]
+        const showFormIcon = allowFormViewRef.current && hoveredRecordIdRef.current === num
         function handleClick(e) {
           if (!meta) return
           const rect = e.currentTarget.getBoundingClientRect()
           setPopup({ meta, anchor: { top: rect.top, bottom: rect.bottom, left: rect.left } })
         }
-        return (
+        const numSpan = (
           <span
             className={`row-num-plain${meta ? ' row-num-plain--clickable' : ''}`}
             style={rowHasError(params.data) ? { color: '#dc2626' } : undefined}
@@ -104,6 +110,17 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
             title={meta ? 'Click to view details' : undefined}
           >
             {num}
+          </span>
+        )
+        if (!showFormIcon) return numSpan
+        return (
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            {numSpan}
+            <span
+              className="form-view-icon"
+              title="Form view"
+              onClick={e => { e.stopPropagation(); setFormPopup({ recordId: num, rowData: params.data }) }}
+            >&#x1F5B9;</span>
           </span>
         )
       },
@@ -241,7 +258,15 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
       .filter(v => v != null && v !== '')
       .join('  ·  ')
     setHoveredRow({ num: id, text })
+    if (allowFormViewRef.current) {
+      hoveredRecordIdRef.current = id
+      gridApiRef.current?.refreshCells({ columns: ['recordId'], force: true })
+    }
   }, [gridData, edits])
+
+  function handleFormSave(recordId, changes) {
+    changes.forEach(({ colIdx, value }) => onEdit(recordId, colIdx, value))
+  }
 
   function goToPage(e) {
     e.preventDefault()
@@ -257,7 +282,13 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
   if (!gridData) return null
 
   return (
-    <div className="grid-wrapper" ref={gridWrapperRef} onMouseLeave={() => setHoveredRow(null)}>
+    <div className="grid-wrapper" ref={gridWrapperRef} onMouseLeave={() => {
+      setHoveredRow(null)
+      if (allowFormViewRef.current) {
+        hoveredRecordIdRef.current = null
+        gridApiRef.current?.refreshCells({ columns: ['recordId'], force: true })
+      }
+    }}>
       {showConfirm && (
         <div className="confirm-overlay">
           <div className="confirm-dialog">
@@ -274,6 +305,15 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
           meta={popup.meta}
           anchor={popup.anchor}
           onClose={() => setPopup(null)}
+        />
+      )}
+      {formPopup && (
+        <FormViewPopup
+          recordId={formPopup.recordId}
+          headers={gridData.headers}
+          initialValues={formPopup.rowData}
+          onSave={handleFormSave}
+          onClose={() => setFormPopup(null)}
         />
       )}
       <div className="grid-toolbar">
@@ -370,6 +410,22 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
               >
                 <span className="toolbar-menu__check">{showErrorsOnly ? '✓' : ''}</span>
                 Show errors only
+              </button>
+              <button
+                type="button"
+                className="toolbar-menu__item"
+                onClick={() => {
+                  const next = !allowFormView
+                  setAllowFormView(next)
+                  allowFormViewRef.current = next
+                  if (!next) {
+                    hoveredRecordIdRef.current = null
+                    gridApiRef.current?.refreshCells({ columns: ['recordId'], force: true })
+                  }
+                }}
+              >
+                <span className="toolbar-menu__check">{allowFormView ? '✓' : ''}</span>
+                Allow Form view
               </button>
               <div className="toolbar-menu__divider" />
               <button
