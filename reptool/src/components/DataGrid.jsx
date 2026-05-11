@@ -9,11 +9,14 @@ const metaByRecord = Object.fromEntries(rawMeta.map(m => [m.record, m]))
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
+// Returns true if a cell value contains the word "error" (case-insensitive)
 const hasError = (val) => String(val ?? '').toLowerCase().includes('error')
 
+// Inline text input rendered inside a cell when the user double-clicks to edit
 function EditingCell({ value, onCommit, onCancel }) {
   const inputRef = useRef(null)
 
+  // Commits on Enter, cancels on Escape
   function handleKeyDown(e) {
     if (e.key === 'Enter') onCommit(e.target.value)
     if (e.key === 'Escape') onCancel()
@@ -38,6 +41,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
   const [showToolbar, setShowToolbar] = useState(false)
   const [filterInput, setFilterInput] = useState('')
   const [filterText, setFilterText] = useState('')
+  const [searchMessage, setSearchMessage] = useState(null)
   const [gotoValue, setGotoValue] = useState('')
   const [showMenu, setShowMenu] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -45,6 +49,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
   const [allowFormView, setAllowFormView] = useState(false)
   const [spacing, setSpacing] = useState('comfortable')
 
+  // Rebuilds the AG Grid theme whenever the row spacing preference changes
   const gridTheme = useMemo(
     () => themeQuartz.withParams({ rowVerticalPaddingScale: spacing === 'compact' ? 0.5 : 1 }),
     [spacing]
@@ -61,6 +66,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
   const allowFormViewRef = useRef(false)
   const hoveredRecordIdRef = useRef(null)
 
+  // Closes the hamburger menu when the user clicks anywhere outside it
   useEffect(() => {
     if (!showMenu) return
     function handleOutsideClick(e) {
@@ -72,14 +78,19 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
     return () => document.removeEventListener('mousedown', handleOutsideClick)
   }, [showMenu])
 
+  // Runs scroll-sync cleanup when the component unmounts
   useEffect(() => () => scrollSyncCleanupRef.current?.(), [])
 
+  // Builds the AG Grid column definitions from the loaded headers and column types
   const colDefs = useMemo(() => {
     if (!gridData) return []
-    const { headers } = gridData
+    const { headers, colTypes = [] } = gridData
 
+    // Returns true if any cell in the row contains an error value
     const rowHasError = (data) => data && Object.values(data).some(hasError)
 
+    // Fixed row-number column: highlights the row red if any cell has an error,
+    // and shows a form-view icon when form view mode is enabled
     const rowNumCol = {
       field: 'recordId',
       headerName: '#',
@@ -97,6 +108,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
         const num = params.value
         const meta = metaByRecord[num]
         const showFormIcon = allowFormViewRef.current && hoveredRecordIdRef.current === num
+        // Opens the record detail popup anchored to the clicked cell
         function handleClick(e) {
           if (!meta) return
           const rect = e.currentTarget.getBoundingClientRect()
@@ -126,42 +138,51 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
       },
     }
 
-    const dataCols = headers.map((name, colIdx) => ({
-      field: name,
-      headerName: name,
-      editable: false,
-      cellStyle: (params) =>
-        hasError(params.value)
-          ? { background: '#fff1f1' }
-          : null,
-      cellRenderer: (params) => {
-        const recordId = params.data.recordId
-        const isEditing = editingCell?.recordId === recordId && editingCell?.field === name
-        if (isEditing) {
-          return (
-            <EditingCell
-              value={params.value}
-              onCommit={(val) => {
-                onEdit(recordId, colIdx, val)
-                setEditingCell(null)
-              }}
-              onCancel={() => setEditingCell(null)}
-            />
-          )
-        }
-        return params.value ?? ''
-      },
-    }))
+    // One column definition per data header; aligns right for number/date types
+    // and renders an inline editor when the cell is in editing state
+    const dataCols = headers.map((name, colIdx) => {
+      const colType = colTypes[colIdx] ?? 'string'
+      const rightAlign = colType === 'number' || colType === 'date'
+      return {
+        field: name,
+        headerName: name,
+        editable: false,
+        headerClass: rightAlign ? 'ag-right-aligned-header' : undefined,
+        cellStyle: (params) => ({
+          textAlign: rightAlign ? 'right' : 'left',
+          ...(hasError(params.value) ? { background: '#fff1f1' } : {}),
+        }),
+        cellRenderer: (params) => {
+          const recordId = params.data.recordId
+          const isEditing = editingCell?.recordId === recordId && editingCell?.field === name
+          if (isEditing) {
+            return (
+              <EditingCell
+                value={params.value}
+                onCommit={(val) => {
+                  onEdit(recordId, colIdx, val)
+                  setEditingCell(null)
+                }}
+                onCancel={() => setEditingCell(null)}
+              />
+            )
+          }
+          return params.value ?? ''
+        },
+      }
+    })
 
     return [rowNumCol, ...dataCols]
   }, [gridData, editingCell, onEdit])
 
+  // Merges pending edits into the base rows and applies active filters
   const rowData = useMemo(() => {
     if (!gridData) return []
     const { headers, rows } = gridData
 
     let result = rows
 
+    // Overlay any user-edited cell values onto the original row objects
     if (edits.size) {
       result = rows.map(row => {
         const id = row.recordId
@@ -176,25 +197,27 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
       })
     }
 
+    // Filter rows by error flag and/or search term (searched across full row text)
     if (showErrorsOnly || filterText) {
       const term = filterText.toLowerCase()
       result = result.filter(row => {
-        const errorCols = headers.filter(h => hasError(row[h]))
-        if (showErrorsOnly && errorCols.length === 0) return false
+        if (showErrorsOnly && !headers.some(h => hasError(row[h]))) return false
         if (!filterText) return true
-        const searchCols = showErrorsOnly ? errorCols : headers
-        return searchCols.some(h => String(row[h] ?? '').toLowerCase().includes(term))
+        const rowText = headers.map(h => String(row[h] ?? '')).join(' ').toLowerCase()
+        return rowText.includes(term)
       })
     }
 
     return result
   }, [gridData, edits, showErrorsOnly, filterText])
 
+  // Puts a cell into editing mode on double-click
   const onCellDoubleClicked = useCallback((params) => {
     if (!params.colDef.field) return
     setEditingCell({ recordId: params.data.recordId, field: params.colDef.field })
   }, [])
 
+  // Wires up the top mirror scrollbar so it stays in sync with the AG Grid viewport
   const onGridReady = useCallback((params) => {
     gridApiRef.current = params.api
 
@@ -208,6 +231,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
 
     const innerDiv = topScroll.firstChild
 
+    // Keeps the phantom inner div as wide as the AG Grid content so the scrollbar has range
     const updateWidth = () => {
       innerDiv.style.width = agContainer.offsetWidth + 'px'
     }
@@ -216,6 +240,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
     const ro = new ResizeObserver(updateWidth)
     ro.observe(agContainer)
 
+    // Propagates scroll from the top mirror bar down to the AG Grid viewport
     const onTopScroll = () => {
       if (syncingRef.current) return
       syncingRef.current = true
@@ -223,6 +248,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
       syncingRef.current = false
     }
 
+    // Propagates scroll from the AG Grid viewport up to the top mirror bar
     const onAgScroll = () => {
       if (syncingRef.current) return
       syncingRef.current = true
@@ -240,16 +266,18 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
     }
   }, [])
 
+  // Keeps the total page count in sync after pagination events
   const onPaginationChanged = useCallback(() => {
     const api = gridApiRef.current
     if (api) setTotalPages(api.paginationGetTotalPages())
   }, [])
 
+  // Updates the toolbar hover bar with the first 3 column values of the hovered row
   const onCellMouseOver = useCallback((params) => {
     if (!gridData) return
     const { headers } = gridData
     const id = params.data.recordId
-    const text = [1, 2, 3]
+    const text = [0, 1, 2]
       .filter(i => i < headers.length)
       .map(i => {
         const key = `${id}:${i}`
@@ -264,10 +292,24 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
     }
   }, [gridData, edits])
 
+  // Applies a batch of field changes from the form view popup back to the edit map
   function handleFormSave(recordId, changes) {
     changes.forEach(({ colIdx, value }) => onEdit(recordId, colIdx, value))
   }
 
+  // Validates the search input (min 3 chars) and applies it as the active filter
+  function handleSearch() {
+    const trimmed = filterInput.trim()
+    if (trimmed.length < 3) {
+      setSearchMessage('Minimum 3 characters to search')
+      setFilterText('')
+      return
+    }
+    setSearchMessage(null)
+    setFilterText(trimmed)
+  }
+
+  // Navigates the grid to the page number entered in the goto input
   function goToPage(e) {
     e.preventDefault()
     const api = gridApiRef.current
@@ -338,21 +380,21 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
                 className="search-input"
                 placeholder="Search…"
                 value={filterInput}
-                onChange={e => setFilterInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && setFilterText(filterInput)}
+                onChange={e => { setFilterInput(e.target.value); setSearchMessage(null) }}
+                onKeyDown={e => e.key === 'Enter' && handleSearch()}
               />
               <button
                 type="button"
                 className="btn"
                 style={filterInput ? { background: '#429ae5', color: '#fff' } : { background: '#e5e7eb', color: '#9ca3af' }}
-                onClick={() => setFilterText(filterInput)}
+                onClick={handleSearch}
               >
                 Search
               </button>
               <button
                 type="button"
                 className="btn btn--ghost"
-                onClick={() => { setFilterInput(''); setFilterText('') }}
+                onClick={() => { setFilterInput(''); setFilterText(''); setSearchMessage(null) }}
               >
                 Reset
               </button>
@@ -457,6 +499,11 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
           )}
         </div>
       </div>
+      {(searchMessage || (filterText && rowData.length === 0)) && (
+        <div className={`search-message${searchMessage ? ' search-message--warn' : ' search-message--no-results'}`}>
+          {searchMessage || `No records found for the search text "${filterText}"`}
+        </div>
+      )}
       <div ref={topScrollRef} className="top-scrollbar">
         <div className="top-scrollbar-inner" />
       </div>
@@ -465,7 +512,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
         rowData={rowData}
         columnDefs={colDefs}
         pagination
-        paginationPageSize={50}
+        paginationPageSize={20}
         domLayout="autoHeight"
         onGridReady={onGridReady}
         onPaginationChanged={onPaginationChanged}

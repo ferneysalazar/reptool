@@ -1,8 +1,11 @@
 import { useEffect, useRef } from 'react'
 
+// Floating popup that shows the errors and warnings for a specific record,
+// anchored to the row-number cell that was clicked
 export default function RecordPopup({ meta, anchor, onClose }) {
   const popupRef = useRef(null)
 
+  // Closes the popup on Escape key or a click outside its bounds
   useEffect(() => {
     function handleKey(e) {
       if (e.key === 'Escape') onClose()
@@ -41,6 +44,7 @@ export default function RecordPopup({ meta, anchor, onClose }) {
   )
 }
 
+// Renders a labelled list of error or warning messages; renders nothing if the list is empty
 function Section({ label, items, variant }) {
   if (!items || items.length === 0) return null
   return (

@@ -5,6 +5,7 @@ import { fatcaModuleColumns, crsModuleColumns } from '../data/moduleColumns.js'
 // First 3 cols are identical in both modules — used to locate the header row
 const HEADER_SIGNATURE = fatcaModuleColumns.slice(0, 3).map(c => c.columnName)
 
+// Normalises a value to lowercase, trimmed, single-spaced string for consistent comparisons
 function norm(s) {
   return String(s ?? '').toLowerCase().trim().replace(/\s+/g, ' ')
 }
@@ -15,18 +16,20 @@ function isHeaderRow(row) {
   return HEADER_SIGNATURE.every((col, i) => norm(row[i]).includes(norm(col)))
 }
 
-// Returns 0 or 1 (checks first two rows only), or -1 if not found
+// Returns the index of the first header row within the first 10 rows, or -1 if not found
 function findHeaderRowIndex(rows) {
-  for (let i = 0; i <= 1 && i < rows.length; i++) {
+  for (let i = 0; i <= 9 && i < rows.length; i++) {
     if (isHeaderRow(rows[i])) return i
   }
   return -1
 }
 
-// Positional contains-check for all columns in a module array.
-// Only the first moduleColumns.length file columns are evaluated; extras are ignored.
+// Positional contains-check up to however many columns the file actually has.
+// Requires at least 4 columns so FATCA (col4="Date of Birth") and CRS (col4="CRS Type") are distinguishable.
 function matchesModule(fileHeaders, moduleColumns) {
-  for (let i = 0; i < moduleColumns.length; i++) {
+  const checkLen = Math.min(moduleColumns.length, fileHeaders.length)
+  if (checkLen < 4) return false
+  for (let i = 0; i < checkLen; i++) {
     if (!norm(fileHeaders[i] ?? '').includes(norm(moduleColumns[i].columnName))) return false
   }
   return true
@@ -60,6 +63,8 @@ function excelSerialToDate(serial) {
   return `${y}/${m}/${d}`
 }
 
+// Converts raw 2-D array rows into keyed objects, converting Excel serial dates
+// for date-typed columns and assigning a sequential recordId to each row
 function buildRows(headers, rawRows, colTypes = [], offset = 0) {
   return rawRows.map((row, i) => {
     const obj = { recordId: offset + i + 1 }
@@ -77,6 +82,7 @@ function buildRows(headers, rawRows, colTypes = [], offset = 0) {
   })
 }
 
+// Reads an Excel buffer, locates the data sheet and header row, and detects the module type
 function parseExcel(buffer) {
   const wb = XLSX.read(new Uint8Array(buffer), { type: 'array' })
   const found = findDataSheet(wb)
@@ -92,6 +98,7 @@ function parseExcel(buffer) {
   return { allRows: rows, headerIdx: 0, module: null }
 }
 
+// Decodes a CSV buffer with PapaParse, locates the header row, and detects the module type
 function parseCsv(buffer) {
   const text = new TextDecoder().decode(new Uint8Array(buffer))
   const { data, errors } = Papa.parse(text, { header: false, skipEmptyLines: true })
@@ -104,6 +111,7 @@ function parseCsv(buffer) {
   }
 }
 
+// Worker entry point: parses the file, then streams preview → progress → complete messages to the main thread
 self.onmessage = ({ data }) => {
   try {
     const { file, fileName } = data
@@ -120,14 +128,14 @@ self.onmessage = ({ data }) => {
     const dataRows = allRows.slice(headerIdx + 1)
     const total = dataRows.length
 
-    self.postMessage({ type: 'preview', headers, rows: buildRows(headers, dataRows.slice(0, 100), colTypes), total, module })
+    self.postMessage({ type: 'preview', headers, colTypes, rows: buildRows(headers, dataRows.slice(0, 100), colTypes), total, module })
 
     const CHUNK = 200
     for (let i = 100; i < total; i += CHUNK) {
       self.postMessage({ type: 'progress', loaded: Math.min(i + CHUNK, total), total })
     }
 
-    self.postMessage({ type: 'complete', headers, rows: buildRows(headers, dataRows, colTypes), total, module })
+    self.postMessage({ type: 'complete', headers, colTypes, rows: buildRows(headers, dataRows, colTypes), total, module })
   } catch (err) {
     self.postMessage({ type: 'error', message: err.message })
   }

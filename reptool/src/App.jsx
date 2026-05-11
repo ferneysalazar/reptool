@@ -33,7 +33,7 @@ export default function App() {
 
     worker.onmessage = ({ data }) => {
       if (data.type === 'preview') {
-        setGridData({ headers: data.headers, rows: data.rows })
+        setGridData({ headers: data.headers, colTypes: data.colTypes ?? [], rows: data.rows })
         setModule(data.module)
         setHasPreview(true)
         setLoadStatus({ state: 'loading', loaded: 100, total: data.total })
@@ -42,7 +42,7 @@ export default function App() {
         setLoadStatus({ state: 'loading', loaded: data.loaded, total: data.total })
       }
       if (data.type === 'complete') {
-        setGridData({ headers: data.headers, rows: data.rows })
+        setGridData({ headers: data.headers, colTypes: data.colTypes ?? [], rows: data.rows })
         setModule(data.module)
         setLoadStatus({ state: 'done', loaded: data.total, total: data.total })
       }
