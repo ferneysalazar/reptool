@@ -98,7 +98,9 @@ self.onmessage = ({ data }) => {
     // When module detected, use canonical clean names and cap columns to module array length.
     // buildRows iterates 0..headers.length-1, so extra file columns are automatically ignored.
     const moduleColumns = module === 'fatca' ? fatcaModuleColumns : module === 'crs' ? crsModuleColumns : null
-    const headers = moduleColumns ? moduleColumns.map(c => c.columnName) : (allRows[headerIdx] ?? []).map(String)
+    const headers = moduleColumns
+      ? moduleColumns.map(c => c.group ? `${c.group} ${c.columnName}` : c.columnName)
+      : (allRows[headerIdx] ?? []).map(String)
     const dataRows = allRows.slice(headerIdx + 1)
     const total = dataRows.length
 
