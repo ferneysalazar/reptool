@@ -3,6 +3,20 @@
 ## Unreleased
 
 ### Added
+- **Row search** — Search button (or Enter) filters the grid by looking for the search text in the full concatenation of all column values per row (space-separated); requires a minimum of 3 characters, shows a yellow warning otherwise; shows a red "No records found" message when no rows match; Reset clears the filter and any message
+- **Column type alignment** — number and date columns are right-aligned (header and cells); text columns remain left-aligned; alignment is derived from the `colTypes` array now included in worker messages
+- `colTypes` array added to the `preview` and `complete` worker messages so the datagrid can use type metadata without re-deriving it from the module definition
+
+### Changed
+- Hover bar now shows the **first 3 data columns** (indices 0–2) instead of columns 2–4
+- Default pagination page size changed from 50 to **20 rows**
+- Header row scan extended from 2 rows to **10 rows** to tolerate files with metadata rows above the column headers
+- Module detection (`matchesModule`) now checks only up to the number of columns the file actually has, preventing false negatives on partial exports; requires at least 4 columns to distinguish FATCA from CRS
+
+### Changed
+- Added brief description comments to all methods in `DataGrid`, `DropZone`, `RecordPopup`, `FormViewPopup` and `excelWorker`
+
+### Added
 - **Form view popup** — "Allow Form view" toggle in the toolbar menu; when active, hovering a row shows a 🖹 icon in the record number cell; clicking it opens a modal with all columns listed as label + input rows (vertical scrollbar for 50+ fields); "Update Record" applies only changed values to the grid via the existing edit mechanism; "Cancel" closes without saving
 - `Account Balance` and all `*Amount` columns typed as `number`; all `*Date` and `Date of Birth` columns typed as `date` in both module arrays
 - **FATCA / CRS module detection** — on file load the worker scans XLSX sheets (4th → 1st) or CSV rows for a known header signature, then validates all columns positionally using a normalised `contains` check (trims, lowercases, collapses internal whitespace) to tolerate extra characters like `*` or multi-space gaps
