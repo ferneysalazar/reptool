@@ -47,6 +47,8 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
   const [showConfirm, setShowConfirm] = useState(false)
   const [showErrorsOnly, setShowErrorsOnly] = useState(false)
   const [allowFormView, setAllowFormView] = useState(false)
+  const [allowSelection, setAllowSelection] = useState(false)
+  const [selectedCount, setSelectedCount] = useState(0)
   const [spacing, setSpacing] = useState('comfortable')
 
   // Rebuilds the AG Grid theme whenever the row spacing preference changes
@@ -65,6 +67,9 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
   const scrollSyncCleanupRef = useRef(null)
   const allowFormViewRef = useRef(false)
   const hoveredRecordIdRef = useRef(null)
+  // Stable refs so cell renderers always see current selection without being recreated
+  const selectedIdsRef = useRef(new Set())
+  const selectedRecordsRef = useRef([])
 
   // Closes the hamburger menu when the user clicks anywhere outside it
   useEffect(() => {
@@ -81,10 +86,44 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
   // Runs scroll-sync cleanup when the component unmounts
   useEffect(() => () => scrollSyncCleanupRef.current?.(), [])
 
+  // Toggles a row's selection state, refreshes the checkbox column, and updates the counter
+  const handleCheckbox = useCallback((id, checked) => {
+    const next = new Set(selectedIdsRef.current)
+    if (checked) next.add(id)
+    else next.delete(id)
+    selectedIdsRef.current = next
+    selectedRecordsRef.current = [...next].map(recordId => ({ recordId }))
+    setSelectedCount(next.size)
+    gridApiRef.current?.refreshCells({ columns: ['__checkbox__'], force: true })
+  }, [])
+
   // Builds the AG Grid column definitions from the loaded headers and column types
   const colDefs = useMemo(() => {
     if (!gridData) return []
     const { headers, colTypes = [] } = gridData
+
+    // Checkbox column prepended when record selection mode is active
+    const checkboxCol = {
+      field: '__checkbox__',
+      headerName: '',
+      width: 36,
+      minWidth: 36,
+      maxWidth: 36,
+      sortable: false,
+      filter: false,
+      suppressMovable: true,
+      cellStyle: () => ({ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }),
+      cellRenderer: (params) => {
+        const id = params.data.recordId
+        return (
+          <input
+            type="checkbox"
+            checked={selectedIdsRef.current.has(id)}
+            onChange={e => handleCheckbox(id, e.target.checked)}
+          />
+        )
+      },
+    }
 
     // Returns true if any cell in the row contains an error value
     const rowHasError = (data) => data && Object.values(data).some(hasError)
@@ -172,8 +211,8 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
       }
     })
 
-    return [rowNumCol, ...dataCols]
-  }, [gridData, editingCell, onEdit])
+    return allowSelection ? [checkboxCol, rowNumCol, ...dataCols] : [rowNumCol, ...dataCols]
+  }, [gridData, editingCell, onEdit, allowSelection, handleCheckbox])
 
   // Merges pending edits into the base rows and applies active filters
   const rowData = useMemo(() => {
@@ -267,10 +306,18 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
     }
   }, [])
 
-  // Keeps the total page count in sync after pagination events
+  // Keeps the total page count in sync after pagination events;
+  // clears selection so it only applies within the current page
   const onPaginationChanged = useCallback(() => {
     const api = gridApiRef.current
-    if (api) setTotalPages(api.paginationGetTotalPages())
+    if (!api) return
+    setTotalPages(api.paginationGetTotalPages())
+    if (selectedIdsRef.current.size > 0) {
+      selectedIdsRef.current = new Set()
+      selectedRecordsRef.current = []
+      setSelectedCount(0)
+      api.refreshCells({ columns: ['__checkbox__'], force: true })
+    }
   }, [])
 
   // Updates the toolbar hover bar with the first 3 column values of the hovered row
@@ -368,6 +415,9 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
             </span>
           )}
         </div>
+        {allowSelection && selectedCount > 0 && (
+          <span className="selection-count">{selectedCount} selected</span>
+        )}
         {module && (
           <span className={`module-badge module-badge--${module}`}>
             {module.toUpperCase()}
@@ -469,6 +519,22 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
               >
                 <span className="toolbar-menu__check">{allowFormView ? '✓' : ''}</span>
                 Allow Form view
+              </button>
+              <button
+                type="button"
+                className="toolbar-menu__item"
+                onClick={() => {
+                  const next = !allowSelection
+                  setAllowSelection(next)
+                  if (!next) {
+                    selectedIdsRef.current = new Set()
+                    selectedRecordsRef.current = []
+                    setSelectedCount(0)
+                  }
+                }}
+              >
+                <span className="toolbar-menu__check">{allowSelection ? '✓' : ''}</span>
+                Record selection
               </button>
               <div className="toolbar-menu__divider" />
               <button

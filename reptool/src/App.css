@@ -570,6 +570,12 @@ h1 {
   color: #aaa;
 }
 
+.selection-count {
+  font-size: 0.8rem;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
 /* Module badge in toolbar */
 .module-badge {
   flex-shrink: 0;
