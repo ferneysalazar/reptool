@@ -15,6 +15,7 @@
 
 ### Changed
 - Added brief description comments to all methods in `DataGrid`, `DropZone`, `RecordPopup`, `FormViewPopup` and `excelWorker`
+- Search always scans all column values of a row even when **Show errors only** is active — both filters are independent and stack (error rows that also match the search term)
 
 ### Added
 - **Form view popup** — "Allow Form view" toggle in the toolbar menu; when active, hovering a row shows a 🖹 icon in the record number cell; clicking it opens a modal with all columns listed as label + input rows (vertical scrollbar for 50+ fields); "Update Record" applies only changed values to the grid via the existing edit mechanism; "Cancel" closes without saving
