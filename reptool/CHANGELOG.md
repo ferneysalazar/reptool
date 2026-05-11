@@ -10,7 +10,7 @@
 
 ### Changed
 - Hover bar now shows the **first 3 data columns** (indices 0–2) instead of columns 2–4
-- Default pagination page size changed from 50 to **20 rows**
+- Default pagination page size changed from 50 to **20 rows**; page size selector added with options 10, 20, 50 and 100
 - Header row scan extended from 2 rows to **10 rows** to tolerate files with metadata rows above the column headers
 - Module detection (`matchesModule`) now checks only up to the number of columns the file actually has, preventing false negatives on partial exports; requires at least 4 columns to distinguish FATCA from CRS
 - Search now fires on **button click or Enter** instead of on every keystroke; input change clears any pending validation message
