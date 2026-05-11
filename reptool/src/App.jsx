@@ -59,6 +59,19 @@ export default function App() {
     setEdits(prev => new Map(prev).set(`${recordId}:${colIdx}`, value))
   }, [])
 
+  // Removes the given record IDs from gridData and cleans up their pending edits
+  const handleDeleteRecords = useCallback((ids) => {
+    const idSet = new Set(ids)
+    setGridData(prev => ({ ...prev, rows: prev.rows.filter(r => !idSet.has(r.recordId)) }))
+    setEdits(prev => {
+      const next = new Map(prev)
+      for (const key of prev.keys()) {
+        if (idSet.has(parseInt(key.split(':')[0], 10))) next.delete(key)
+      }
+      return next
+    })
+  }, [])
+
   const handleClear = useCallback(() => {
     workerRef.current?.terminate()
     workerRef.current = null
@@ -82,7 +95,7 @@ export default function App() {
         hasPreview={hasPreview}
         module={module}
       />
-      <DataGrid gridData={gridData} edits={edits} onEdit={handleEdit} onClear={handleClear} module={module} />
+      <DataGrid gridData={gridData} edits={edits} onEdit={handleEdit} onClear={handleClear} onDeleteRecords={handleDeleteRecords} module={module} />
     </main>
   )
 }

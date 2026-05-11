@@ -35,7 +35,7 @@ function EditingCell({ value, onCommit, onCancel }) {
 }
 
 
-export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
+export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRecords, module }) {
   const [editingCell, setEditingCell] = useState(null)
   const [totalPages, setTotalPages] = useState(0)
   const [showToolbar, setShowToolbar] = useState(false)
@@ -49,6 +49,9 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
   const [allowFormView, setAllowFormView] = useState(false)
   const [allowSelection, setAllowSelection] = useState(false)
   const [selectedCount, setSelectedCount] = useState(0)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleteInput, setDeleteInput] = useState('')
+  const [deleteError, setDeleteError] = useState(false)
   const [spacing, setSpacing] = useState('comfortable')
 
   // Rebuilds the AG Grid theme whenever the row spacing preference changes
@@ -340,6 +343,21 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
     }
   }, [gridData, edits])
 
+  // Validates the delete count input and, if it matches, removes the selected records
+  function handleDeleteConfirm() {
+    if (parseInt(deleteInput, 10) !== selectedCount) {
+      setDeleteError(true)
+      return
+    }
+    onDeleteRecords([...selectedIdsRef.current])
+    selectedIdsRef.current = new Set()
+    selectedRecordsRef.current = []
+    setSelectedCount(0)
+    setShowDeleteDialog(false)
+    setDeleteInput('')
+    setDeleteError(false)
+  }
+
   // Applies a batch of field changes from the form view popup back to the edit map
   function handleFormSave(recordId, changes) {
     changes.forEach(({ colIdx, value }) => onEdit(recordId, colIdx, value))
@@ -390,6 +408,30 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
           </div>
         </div>
       )}
+      {showDeleteDialog && (
+        <div className="confirm-overlay">
+          <div className="confirm-dialog">
+            <p className="confirm-dialog__message">You are about to delete {selectedCount} selected record{selectedCount !== 1 ? 's' : ''}.</p>
+            <div className="delete-dialog__field">
+              <label className="delete-dialog__label" htmlFor="delete-count-input">Number of Records to Delete</label>
+              <input
+                id="delete-count-input"
+                type="text"
+                className="delete-dialog__input"
+                value={deleteInput}
+                autoFocus
+                onChange={e => { setDeleteInput(e.target.value); setDeleteError(false) }}
+                onKeyDown={e => e.key === 'Enter' && handleDeleteConfirm()}
+              />
+              {deleteError && <span className="delete-dialog__error">Number of records does not match</span>}
+            </div>
+            <div className="confirm-dialog__actions">
+              <button className="btn btn--ghost" onClick={() => setShowDeleteDialog(false)}>Cancel</button>
+              <button className="btn btn--danger" onClick={handleDeleteConfirm}>OK</button>
+            </div>
+          </div>
+        </div>
+      )}
       {popup && (
         <RecordPopup
           meta={popup.meta}
@@ -416,7 +458,15 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
           )}
         </div>
         {allowSelection && selectedCount > 0 && (
-          <span className="selection-count">{selectedCount} selected</span>
+          <span className="selection-info">
+            <span className="selection-count">{selectedCount} selected</span>
+            <button
+              className="selection-delete-link"
+              onClick={() => { setShowDeleteDialog(true); setDeleteInput(''); setDeleteError(false) }}
+            >
+              delete
+            </button>
+          </span>
         )}
         {module && (
           <span className={`module-badge module-badge--${module}`}>

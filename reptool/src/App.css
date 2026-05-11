@@ -570,10 +570,64 @@ h1 {
   color: #aaa;
 }
 
+.selection-info {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
 .selection-count {
   font-size: 0.8rem;
   color: #6b7280;
-  flex-shrink: 0;
+}
+
+.selection-delete-link {
+  display: none;
+  font-size: 0.75rem;
+  color: #dc2626;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  font-family: inherit;
+}
+
+.selection-info:hover .selection-delete-link {
+  display: inline;
+}
+
+.delete-dialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.delete-dialog__label {
+  font-size: 0.875rem;
+  color: #374151;
+  font-weight: 500;
+}
+
+.delete-dialog__input {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.delete-dialog__input:focus {
+  outline: 2px solid #dc2626;
+  border-color: transparent;
+}
+
+.delete-dialog__error {
+  font-size: 0.8rem;
+  color: #dc2626;
 }
 
 /* Module badge in toolbar */
