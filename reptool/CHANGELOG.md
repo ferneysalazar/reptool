@@ -9,6 +9,9 @@
 - `colTypes` array added to the `preview` and `complete` worker messages so the datagrid can use type metadata without re-deriving it from the module definition
 
 ### Changed
+- Form popup labels right-aligned for better visual pairing with their inputs
+- Form popup label-to-input gap increased to 1rem
+- Form popup CP group rows have a subtle gray background (`#f3f4f6`) spanning the full row width
 - Hover bar now shows the **first 3 data columns** (indices 0–2) instead of columns 2–4
 - Default pagination page size changed from 50 to **20 rows**; page size selector added with options 10, 20, 50 and 100
 - Header row scan extended from 2 rows to **10 rows** to tolerate files with metadata rows above the column headers
