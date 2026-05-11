@@ -584,7 +584,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
                 }}
               >
                 <span className="toolbar-menu__check">{allowSelection ? '✓' : ''}</span>
-                Record selection
+                Record selection mode
               </button>
               <div className="toolbar-menu__divider" />
               <button
