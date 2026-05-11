@@ -52,6 +52,9 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleteInput, setDeleteInput] = useState('')
   const [deleteError, setDeleteError] = useState(false)
+  const [showProcessDialog, setShowProcessDialog] = useState(false)
+  const [processInput, setProcessInput] = useState('')
+  const [processError, setProcessError] = useState(false)
   const [spacing, setSpacing] = useState('comfortable')
 
   // Rebuilds the AG Grid theme whenever the row spacing preference changes
@@ -358,6 +361,18 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
     setDeleteError(false)
   }
 
+  // Validates the process count input and, if it matches the total grid records, proceeds
+  function handleProcessConfirm() {
+    if (parseInt(processInput, 10) !== rowData.length) {
+      setProcessError(true)
+      return
+    }
+    // TODO: trigger actual validation and processing
+    setShowProcessDialog(false)
+    setProcessInput('')
+    setProcessError(false)
+  }
+
   // Applies a batch of field changes from the form view popup back to the edit map
   function handleFormSave(recordId, changes) {
     changes.forEach(({ colIdx, value }) => onEdit(recordId, colIdx, value))
@@ -428,6 +443,30 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
             <div className="confirm-dialog__actions">
               <button className="btn btn--ghost" onClick={() => setShowDeleteDialog(false)}>Cancel</button>
               <button className="btn btn--danger" onClick={handleDeleteConfirm}>OK</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showProcessDialog && (
+        <div className="confirm-overlay">
+          <div className="confirm-dialog">
+            <p className="confirm-dialog__message">You are about to ingest and process {rowData.length} record{rowData.length !== 1 ? 's' : ''}.</p>
+            <div className="delete-dialog__field">
+              <label className="delete-dialog__label" htmlFor="process-count-input">Number of Records to Process</label>
+              <input
+                id="process-count-input"
+                type="text"
+                className="delete-dialog__input"
+                value={processInput}
+                autoFocus
+                onChange={e => { setProcessInput(e.target.value); setProcessError(false) }}
+                onKeyDown={e => e.key === 'Enter' && handleProcessConfirm()}
+              />
+              {processError && <span className="delete-dialog__error">Number of records does not match</span>}
+            </div>
+            <div className="confirm-dialog__actions">
+              <button className="btn btn--ghost" onClick={() => setShowProcessDialog(false)}>Cancel</button>
+              <button className="btn btn--primary" onClick={handleProcessConfirm}>OK</button>
             </div>
           </div>
         </div>
@@ -585,6 +624,24 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
               >
                 <span className="toolbar-menu__check">{allowSelection ? '✓' : ''}</span>
                 Record selection mode
+              </button>
+              <div className="toolbar-menu__divider" />
+              <button
+                type="button"
+                className="toolbar-menu__item"
+                disabled={!allowSelection || selectedCount === 0}
+                onClick={() => {}}
+              >
+                <span className="toolbar-menu__check" />
+                Validate Selected
+              </button>
+              <button
+                type="button"
+                className="toolbar-menu__item"
+                onClick={() => { setShowMenu(false); setShowProcessDialog(true); setProcessInput(''); setProcessError(false) }}
+              >
+                <span className="toolbar-menu__check" />
+                Validate and Process
               </button>
               <div className="toolbar-menu__divider" />
               <button

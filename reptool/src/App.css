@@ -325,6 +325,16 @@ h1 {
   color: #7c3aed;
 }
 
+.toolbar-menu__item:disabled {
+  color: #b0b0b0;
+  cursor: not-allowed;
+}
+
+.toolbar-menu__item:disabled:hover {
+  background: none;
+  color: #b0b0b0;
+}
+
 .toolbar-menu__item--danger {
   color: #dc2626;
 }

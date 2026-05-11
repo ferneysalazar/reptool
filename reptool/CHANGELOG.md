@@ -3,6 +3,8 @@
 ## Unreleased
 
 ### Added
+- **Validate and Process** — new menu option (always enabled) opens a confirmation dialog showing the total grid record count; input must match the total before OK is accepted; mismatch shows a red error label; processing stub ready for implementation
+- **Validate Selected** — new menu option enabled only when Record selection mode is active and at least one record is checked; disabled state is visually grayed out
 - **Delete selected records** — hovering the selected count in the toolbar reveals a red "delete" link; clicking opens a confirmation dialog with a "Number of Records to Delete" input; OK is blocked until the typed number matches the selected count (mismatch shows a red error label); on confirmation, records are removed from the grid and their pending edits are cleaned up; selection state is fully reset
 - **Record selection mode** — "Record selection mode" toggle in the toolbar menu adds a checkbox column to the left of the record number; selected row count shown as subtle text in the toolbar; selection state stored in memory (`selectedIdsRef` / `selectedRecordsRef`) for use by future features; selection is scoped to the current page and automatically cleared on page navigation
 - **Row search** — Search button (or Enter) filters the grid by looking for the search text in the full concatenation of all column values per row (space-separated); requires a minimum of 3 characters, shows a yellow warning otherwise; shows a red "No records found" message when no rows match; Reset clears the filter and any message
