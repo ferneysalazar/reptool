@@ -3,6 +3,8 @@
 ## Unreleased
 
 ### Added
+- **Form view popup** — "Allow Form view" toggle in the toolbar menu; when active, hovering a row shows a 🖹 icon in the record number cell; clicking it opens a modal with all columns listed as label + input rows (vertical scrollbar for 50+ fields); "Update Record" applies only changed values to the grid via the existing edit mechanism; "Cancel" closes without saving
+- `Account Balance` and all `*Amount` columns typed as `number`; all `*Date` and `Date of Birth` columns typed as `date` in both module arrays
 - **FATCA / CRS module detection** — on file load the worker scans XLSX sheets (4th → 1st) or CSV rows for a known header signature, then validates all columns positionally using a normalised `contains` check (trims, lowercases, collapses internal whitespace) to tolerate extra characters like `*` or multi-space gaps
 - When a module is detected, canonical column names from `fatcaModuleColumns` / `crsModuleColumns` replace the raw file headers in the grid; columns beyond the module array length are discarded
 - Excel serial date conversion — date-typed columns (`type: "date"`) whose raw cell value is a number are automatically converted to `YYYY/MM/DD` using the Excel epoch (Dec 30 1899, UTC)
