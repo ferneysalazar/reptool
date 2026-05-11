@@ -197,7 +197,8 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
       })
     }
 
-    // Filter rows by error flag and/or search term (searched across full row text)
+    // Filter rows by error flag and/or search term (both conditions must be satisfied when active).
+    // Search always scans the full row regardless of showErrorsOnly.
     if (showErrorsOnly || filterText) {
       const term = filterText.toLowerCase()
       result = result.filter(row => {
