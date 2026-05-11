@@ -1,10 +1,22 @@
-export default function StatusBar({ status, loaded, total, hasPreview }) {
+export default function StatusBar({ status, loaded, total, hasPreview, module }) {
   if (status === 'idle') return null
 
   if (status === 'done') {
+    if (module === null) {
+      return (
+        <div className="status-bar status-bar--unrecognized">
+          Loaded {total.toLocaleString()} rows
+          <span className="status-bar__separator">·</span>
+          Non FATCA nor CRS file detected — unprocessable file
+        </div>
+      )
+    }
     return (
       <div className="status-bar done">
         Loaded {total.toLocaleString()} rows
+        <span className="status-bar__separator">·</span>
+        <span className={`module-badge module-badge--${module}`}>{module.toUpperCase()}</span>
+        module
       </div>
     )
   }

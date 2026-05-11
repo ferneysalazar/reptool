@@ -31,7 +31,7 @@ function EditingCell({ value, onCommit, onCancel }) {
 }
 
 
-export default function DataGrid({ gridData, edits, onEdit, onClear }) {
+export default function DataGrid({ gridData, edits, onEdit, onClear, module }) {
   const [editingCell, setEditingCell] = useState(null)
   const [totalPages, setTotalPages] = useState(0)
   const [showToolbar, setShowToolbar] = useState(false)
@@ -285,6 +285,11 @@ export default function DataGrid({ gridData, edits, onEdit, onClear }) {
             </span>
           )}
         </div>
+        {module && (
+          <span className={`module-badge module-badge--${module}`}>
+            {module.toUpperCase()}
+          </span>
+        )}
         {showToolbar && (
           <div className="toolbar-controls">
             <div className="search-form">

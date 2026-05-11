@@ -207,6 +207,21 @@ h1 {
 .status-bar.done {
   color: #16a34a;
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-bar--unrecognized {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #b91c1c;
+  font-weight: 500;
+}
+
+.status-bar__separator {
+  color: #d1d5db;
 }
 
 /* Grid */
@@ -534,6 +549,26 @@ h1 {
 .record-popup__empty {
   font-size: 0.8rem;
   color: #aaa;
+}
+
+/* Module badge in toolbar */
+.module-badge {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.module-badge--fatca {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.module-badge--crs {
+  background: #dbeafe;
+  color: #1d4ed8;
 }
 
 /* Inline cell editor */

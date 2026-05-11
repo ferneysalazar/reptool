@@ -7,6 +7,7 @@ import './App.css'
 export default function App() {
   const workerRef = useRef(null)
   const [gridData, setGridData] = useState(null) // { headers, rows }
+  const [module, setModule] = useState(null)      // 'fatca' | 'crs' | null
   const [loadStatus, setLoadStatus] = useState({ state: 'idle', loaded: 0, total: 0 })
   const [hasPreview, setHasPreview] = useState(false)
   const [edits, setEdits] = useState(new Map())
@@ -14,6 +15,7 @@ export default function App() {
   function handleFile(file) {
     workerRef.current?.terminate()
     setGridData(null)
+    setModule(null)
     setEdits(new Map())
     setHasPreview(false)
     setLoadStatus({ state: 'parsing', loaded: 0, total: 0 })
@@ -32,6 +34,7 @@ export default function App() {
     worker.onmessage = ({ data }) => {
       if (data.type === 'preview') {
         setGridData({ headers: data.headers, rows: data.rows })
+        setModule(data.module)
         setHasPreview(true)
         setLoadStatus({ state: 'loading', loaded: 100, total: data.total })
       }
@@ -40,6 +43,7 @@ export default function App() {
       }
       if (data.type === 'complete') {
         setGridData({ headers: data.headers, rows: data.rows })
+        setModule(data.module)
         setLoadStatus({ state: 'done', loaded: data.total, total: data.total })
       }
       if (data.type === 'error') {
@@ -59,6 +63,7 @@ export default function App() {
     workerRef.current?.terminate()
     workerRef.current = null
     setGridData(null)
+    setModule(null)
     setEdits(new Map())
     setHasPreview(false)
     setLoadStatus({ state: 'idle', loaded: 0, total: 0 })
@@ -75,8 +80,9 @@ export default function App() {
         loaded={loadStatus.loaded}
         total={loadStatus.total}
         hasPreview={hasPreview}
+        module={module}
       />
-      <DataGrid gridData={gridData} edits={edits} onEdit={handleEdit} onClear={handleClear} />
+      <DataGrid gridData={gridData} edits={edits} onEdit={handleEdit} onClear={handleClear} module={module} />
     </main>
   )
 }
