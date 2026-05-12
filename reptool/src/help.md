@@ -13,12 +13,12 @@ Use the search bar in the toolbar (enable it from the menu with **Show toolbar**
 
 ### Filter Mode
 
-Prefix your search text with `filter:` to apply a named filter instead of a text search. Only the first 5 characters of the keyword are required.
+Prefix your search text with `filter:` to apply a named filter instead of a text search. 
 
 | Filter | What it shows |
 | --- | --- |
-| `filter:individuals` | Rows with a non-empty AH First Name or AH Last Name |
-| `filter:entities` | Rows with a non-empty AH Entity Name and no first/last name |
+| `filter:individuals` | Rows with Individual account holders only |
+| `filter:entities` | Rows with a Entity/Orgnization account holders only |
 | `filter:organization` | Same as entities |
 | `filter:edited` | Only records that have been edited in this session |
 | `filter:errors` | Records flagged with an error value in any column |
