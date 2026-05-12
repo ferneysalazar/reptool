@@ -1,9 +1,9 @@
 import * as XLSX from 'xlsx'
 import Papa from 'papaparse'
-import { fatcaModuleColumns, crsModuleColumns } from '../data/moduleColumns.js'
+import { fatcaCrsModuleColumns } from '../data/moduleColumns.js'
 
-// First 3 cols are identical in both modules — used to locate the header row
-const HEADER_SIGNATURE = fatcaModuleColumns.slice(0, 3).map(c => c.columnName)
+// First 3 cols are used to locate the header row
+const HEADER_SIGNATURE = fatcaCrsModuleColumns.slice(0, 3).map(c => c.columnName)
 
 // Normalises a value to lowercase, trimmed, single-spaced string for consistent comparisons
 function norm(s) {
@@ -24,22 +24,30 @@ function findHeaderRowIndex(rows) {
   return -1
 }
 
-// Positional contains-check up to however many columns the file actually has.
-// Requires at least 4 columns so FATCA (col4="Date of Birth") and CRS (col4="CRS Type") are distinguishable.
-function matchesModule(fileHeaders, moduleColumns) {
-  const checkLen = Math.min(moduleColumns.length, fileHeaders.length)
-  if (checkLen < 4) return false
-  for (let i = 0; i < checkLen; i++) {
-    if (!norm(fileHeaders[i] ?? '').includes(norm(moduleColumns[i].columnName))) return false
+// Stops at the first row (after the 3rd) where all of the first 10 columns are blank,
+// discarding that row and everything after it. Prevents millions of empty trailing rows
+// from being imported when Excel files have ghost formatting beyond the real data.
+function truncateDataRows(rows) {
+  for (let i = 3; i < rows.length; i++) {
+    const row = rows[i]
+    if (!row || row.slice(0, 10).every(v => v == null || String(v).trim() === '')) {
+      return rows.slice(0, i)
+    }
   }
-  return true
+  return rows
 }
 
-// Try FATCA first, then CRS; returns 'fatca' | 'crs' | null
-function detectModule(headerRow) {
-  if (matchesModule(headerRow, fatcaModuleColumns)) return 'fatca'
-  if (matchesModule(headerRow, crsModuleColumns))  return 'crs'
-  return null
+// Scans data rows (raw 2-D arrays) looking for the first row with a non-empty FATCA Status
+// or CRS Status value. The column positions are derived from fatcaCrsModuleColumns so they
+// are always in sync with the definition. Throws if no qualifying row is found.
+function detectModule(dataRows) {
+  const fatcaIdx = fatcaCrsModuleColumns.findIndex(c => c.columnName === 'FATCA Status' && c.group === 'AH')
+  const crsIdx   = fatcaCrsModuleColumns.findIndex(c => c.columnName === 'CRS Status'   && c.group === 'AH')
+  for (const row of dataRows) {
+    if (row[fatcaIdx] != null && String(row[fatcaIdx]).trim() !== '') return 'fatca'
+    if (row[crsIdx]   != null && String(row[crsIdx]).trim()   !== '') return 'crs'
+  }
+  throw new Error('Unprocessable: no FATCA Status or CRS Status values found in data rows')
 }
 
 // For XLSX: start from 4th sheet (index 3) and walk backwards to the 1st
@@ -82,23 +90,19 @@ function buildRows(headers, rawRows, colTypes = [], offset = 0) {
   })
 }
 
-// Reads an Excel buffer, locates the data sheet and header row, and detects the module type
+// Reads an Excel buffer and locates the data sheet and header row
 function parseExcel(buffer) {
   const wb = XLSX.read(new Uint8Array(buffer), { type: 'array' })
   const found = findDataSheet(wb)
   if (found) {
-    return {
-      allRows: found.rows,
-      headerIdx: found.headerIdx,
-      module: detectModule(found.rows[found.headerIdx]),
-    }
+    return { allRows: found.rows, headerIdx: found.headerIdx, recognized: true }
   }
   // Fallback: no recognisable header found, use first sheet row 0
   const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 })
-  return { allRows: rows, headerIdx: 0, module: null }
+  return { allRows: rows, headerIdx: 0, recognized: false }
 }
 
-// Decodes a CSV buffer with PapaParse, locates the header row, and detects the module type
+// Decodes a CSV buffer with PapaParse and locates the header row
 function parseCsv(buffer) {
   const text = new TextDecoder().decode(new Uint8Array(buffer))
   const { data, errors } = Papa.parse(text, { header: false, skipEmptyLines: true })
@@ -107,7 +111,7 @@ function parseCsv(buffer) {
   return {
     allRows: data,
     headerIdx: headerIdx !== -1 ? headerIdx : 0,
-    module: headerIdx !== -1 ? detectModule(data[headerIdx]) : null,
+    recognized: headerIdx !== -1,
   }
 }
 
@@ -116,16 +120,18 @@ self.onmessage = ({ data }) => {
   try {
     const { file, fileName } = data
     const isCsv = fileName.toLowerCase().endsWith('.csv')
-    const { allRows, headerIdx, module } = isCsv ? parseCsv(file) : parseExcel(file)
+    const { allRows, headerIdx, recognized } = isCsv ? parseCsv(file) : parseExcel(file)
 
-    // When module detected, use canonical clean names and cap columns to module array length.
-    // buildRows iterates 0..headers.length-1, so extra file columns are automatically ignored.
-    const moduleColumns = module === 'fatca' ? fatcaModuleColumns : module === 'crs' ? crsModuleColumns : null
+    const dataRows = truncateDataRows(allRows.slice(headerIdx + 1))
+
+    // When the file has a recognised header, detect module from the first data row that has
+    // a non-empty FATCA Status or CRS Status value. Throws if none is found.
+    const module = recognized ? detectModule(dataRows) : null
+    const moduleColumns = module ? fatcaCrsModuleColumns : null
     const headers = moduleColumns
       ? moduleColumns.map(c => c.group ? `${c.group} ${c.columnName}` : c.columnName)
       : (allRows[headerIdx] ?? []).map(String)
     const colTypes = moduleColumns ? moduleColumns.map(c => c.type) : []
-    const dataRows = allRows.slice(headerIdx + 1)
     const total = dataRows.length
 
     self.postMessage({ type: 'preview', headers, colTypes, rows: buildRows(headers, dataRows.slice(0, 100), colTypes), total, module })

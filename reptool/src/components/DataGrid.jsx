@@ -39,7 +39,7 @@ function EditingCell({ value, onCommit, onCancel }) {
 export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRecords, module }) {
   const [editingCell, setEditingCell] = useState(null)
   const [totalPages, setTotalPages] = useState(0)
-  const [showToolbar, setShowToolbar] = useState(false)
+  const [showToolbar, setShowToolbar] = useState(true)
   const [filterInput, setFilterInput] = useState('')
   const [filterText, setFilterText] = useState('')
   const [filterMode, setFilterMode] = useState(null) // 'individuals'|'entities'|'edited'|'errors'|'selected'

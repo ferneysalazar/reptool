@@ -1,10 +1,11 @@
-export default function StatusBar({ status, loaded, total, hasPreview, module }) {
+export default function StatusBar({ status, loaded, total, hasPreview, module, fileName, editedCount }) {
   if (status === 'idle') return null
 
   if (status === 'done') {
     if (module === null) {
       return (
         <div className="status-bar status-bar--unrecognized">
+          {fileName && <><span className="status-bar__filename">{fileName}</span><span className="status-bar__separator">·</span></>}
           Loaded {total.toLocaleString()} rows
           <span className="status-bar__separator">·</span>
           Non FATCA nor CRS file detected — unprocessable file
@@ -13,10 +14,12 @@ export default function StatusBar({ status, loaded, total, hasPreview, module })
     }
     return (
       <div className="status-bar done">
+        {fileName && <><span className="status-bar__filename">{fileName}</span><span className="status-bar__separator">·</span></>}
         Loaded {total.toLocaleString()} rows
         <span className="status-bar__separator">·</span>
         <span className={`module-badge module-badge--${module}`}>{module.toUpperCase()}</span>
         module
+        {editedCount > 0 && <><span className="status-bar__separator">·</span><span className="status-bar__edited">{editedCount} edited</span></>}
       </div>
     )
   }
