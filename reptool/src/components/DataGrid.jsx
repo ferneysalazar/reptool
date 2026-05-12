@@ -41,6 +41,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
   const [showToolbar, setShowToolbar] = useState(false)
   const [filterInput, setFilterInput] = useState('')
   const [filterText, setFilterText] = useState('')
+  const [filterMode, setFilterMode] = useState(null) // 'individuals'|'entities'|'edited'|'errors'|'selected'
   const [searchMessage, setSearchMessage] = useState(null)
   const [gotoValue, setGotoValue] = useState('')
   const [showMenu, setShowMenu] = useState(false)
@@ -55,6 +56,8 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
   const [showProcessDialog, setShowProcessDialog] = useState(false)
   const [processInput, setProcessInput] = useState('')
   const [processError, setProcessError] = useState(false)
+  const [clearInput, setClearInput] = useState('')
+  const [clearError, setClearError] = useState(false)
   const [spacing, setSpacing] = useState('comfortable')
 
   // Rebuilds the AG Grid theme whenever the row spacing preference changes
@@ -220,6 +223,12 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
     return allowSelection ? [checkboxCol, rowNumCol, ...dataCols] : [rowNumCol, ...dataCols]
   }, [gridData, editingCell, onEdit, allowSelection, handleCheckbox])
 
+  const editedIds = useMemo(() => {
+    const ids = new Set()
+    for (const key of edits.keys()) ids.add(parseInt(key.split(':')[0], 10))
+    return ids
+  }, [edits])
+
   // Merges pending edits into the base rows and applies active filters
   const rowData = useMemo(() => {
     if (!gridData) return []
@@ -242,6 +251,26 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
       })
     }
 
+    if (filterMode) {
+      const firstNameCol = 'AH First Name'
+      const lastNameCol = 'AH Last Name'
+      const entityNameCol = 'AH Entity Name'
+      const nonEmpty = (row, col) => col && String(row[col] ?? '').trim() !== ''
+
+      if (filterMode === 'individuals') {
+        result = result.filter(row => nonEmpty(row, firstNameCol) || nonEmpty(row, lastNameCol))
+      } else if (filterMode === 'entities') {
+        result = result.filter(row =>
+          nonEmpty(row, entityNameCol) && !nonEmpty(row, firstNameCol) && !nonEmpty(row, lastNameCol)
+        )
+      } else if (filterMode === 'edited') {
+        result = result.filter(row => editedIds.has(row.recordId))
+      } else if (filterMode === 'errors') {
+        result = result.filter(row => headers.some(h => hasError(row[h])))
+      }
+      return result
+    }
+
     // Filter rows by error flag and/or search term (both conditions must be satisfied when active).
     // Search always scans the full row regardless of showErrorsOnly.
     if (showErrorsOnly || filterText) {
@@ -255,7 +284,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
     }
 
     return result
-  }, [gridData, edits, showErrorsOnly, filterText])
+  }, [gridData, edits, showErrorsOnly, filterText, filterMode, editedIds, selectedCount])
 
   // Puts a cell into editing mode on double-click
   const onCellDoubleClicked = useCallback((params) => {
@@ -373,14 +402,42 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
     setProcessError(false)
   }
 
+  // Validates the clear count input and, if it matches the total loaded records, clears all data
+  function handleClearConfirm() {
+    if (parseInt(clearInput, 10) !== gridData.rows.length) {
+      setClearError(true)
+      return
+    }
+    setShowConfirm(false)
+    setClearInput('')
+    setClearError(false)
+    onClear()
+  }
+
   // Applies a batch of field changes from the form view popup back to the edit map
   function handleFormSave(recordId, changes) {
     changes.forEach(({ colIdx, value }) => onEdit(recordId, colIdx, value))
   }
 
-  // Validates the search input (min 3 chars) and applies it as the active filter
+  const FILTER_KEYWORDS = { indiv: 'individuals', entit: 'entities', organ: 'entities', edite: 'edited', error: 'errors' }
+
+  // Validates the search input (min 3 chars) and applies it as the active filter,
+  // or parses a "filter:<keyword>" prefix to activate a named filter mode.
   function handleSearch() {
     const trimmed = filterInput.trim()
+    if (trimmed.toLowerCase().startsWith('filter:')) {
+      const keyword = trimmed.slice(7).trim().toLowerCase().slice(0, 5)
+      const mode = FILTER_KEYWORDS[keyword]
+      if (!mode) {
+        setSearchMessage('Unknown filter. Valid: individuals, entities, organization, edited, errors')
+        return
+      }
+      setSearchMessage(null)
+      setFilterText('')
+      setFilterMode(mode)
+      return
+    }
+    setFilterMode(null)
     if (trimmed.length < 3) {
       setSearchMessage('Minimum 3 characters to search')
       setFilterText('')
@@ -415,10 +472,23 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
       {showConfirm && (
         <div className="confirm-overlay">
           <div className="confirm-dialog">
-            <p className="confirm-dialog__message">Clear all loaded data?</p>
+            <p className="confirm-dialog__message">You are about to clear {gridData.rows.length.toLocaleString()} loaded record{gridData.rows.length !== 1 ? 's' : ''}. This action cannot be undone.</p>
+            <div className="delete-dialog__field">
+              <label className="delete-dialog__label" htmlFor="clear-count-input">Number of Records to Clear</label>
+              <input
+                id="clear-count-input"
+                type="text"
+                className="delete-dialog__input"
+                value={clearInput}
+                autoFocus
+                onChange={e => { setClearInput(e.target.value); setClearError(false) }}
+                onKeyDown={e => e.key === 'Enter' && handleClearConfirm()}
+              />
+              {clearError && <span className="delete-dialog__error">Number of records does not match</span>}
+            </div>
             <div className="confirm-dialog__actions">
-              <button className="btn btn--ghost" onClick={() => setShowConfirm(false)}>Cancel</button>
-              <button className="btn btn--danger" onClick={() => { setShowConfirm(false); onClear() }}>Clear</button>
+              <button className="btn btn--ghost" onClick={() => { setShowConfirm(false); setClearInput(''); setClearError(false) }}>Cancel</button>
+              <button className="btn btn--danger" onClick={handleClearConfirm}>Clear</button>
             </div>
           </div>
         </div>
@@ -507,11 +577,6 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
             </button>
           </span>
         )}
-        {module && (
-          <span className={`module-badge module-badge--${module}`}>
-            {module.toUpperCase()}
-          </span>
-        )}
         {showToolbar && (
           <div className="toolbar-controls">
             <div className="search-form">
@@ -534,7 +599,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
               <button
                 type="button"
                 className="btn btn--ghost"
-                onClick={() => { setFilterInput(''); setFilterText(''); setSearchMessage(null) }}
+                onClick={() => { setFilterInput(''); setFilterText(''); setFilterMode(null); setSearchMessage(null) }}
               >
                 Reset
               </button>
@@ -664,7 +729,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
               <button
                 type="button"
                 className="toolbar-menu__item toolbar-menu__item--danger"
-                onClick={() => { setShowMenu(false); setShowConfirm(true) }}
+                onClick={() => { setShowMenu(false); if (editedIds.size === 0) { onClear() } else { setClearInput(''); setClearError(false); setShowConfirm(true) } }}
               >
                 <span className="toolbar-menu__check" />
                 Clear data
@@ -673,9 +738,9 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
           )}
         </div>
       </div>
-      {(searchMessage || (filterText && rowData.length === 0)) && (
+      {(searchMessage || (filterText && rowData.length === 0) || (filterMode && rowData.length === 0)) && (
         <div className={`search-message${searchMessage ? ' search-message--warn' : ' search-message--no-results'}`}>
-          {searchMessage || `No records found for the search text "${filterText}"`}
+          {searchMessage || (filterMode ? `No records found for filter: ${filterMode}` : `No records found for the search text "${filterText}"`)}
         </div>
       )}
       <div ref={topScrollRef} className="top-scrollbar">
