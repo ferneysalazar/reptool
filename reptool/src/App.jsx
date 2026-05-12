@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, useMemo } from 'react'
 import DropZone from './components/DropZone.jsx'
 import StatusBar from './components/StatusBar.jsx'
 import DataGrid from './components/DataGrid.jsx'
@@ -9,6 +9,7 @@ export default function App() {
   const [gridData, setGridData] = useState(null) // { headers, rows }
   const [module, setModule] = useState(null)      // 'fatca' | 'crs' | null
   const [loadStatus, setLoadStatus] = useState({ state: 'idle', loaded: 0, total: 0 })
+  const [fileName, setFileName] = useState(null)
   const [hasPreview, setHasPreview] = useState(false)
   const [edits, setEdits] = useState(new Map())
 
@@ -18,6 +19,7 @@ export default function App() {
     setModule(null)
     setEdits(new Map())
     setHasPreview(false)
+    setFileName(file.name)
     setLoadStatus({ state: 'parsing', loaded: 0, total: 0 })
 
     const worker = new Worker(
@@ -79,21 +81,30 @@ export default function App() {
     setModule(null)
     setEdits(new Map())
     setHasPreview(false)
+    setFileName(null)
     setLoadStatus({ state: 'idle', loaded: 0, total: 0 })
   }, [])
+
+  const editedCount = useMemo(() => {
+    const ids = new Set()
+    for (const key of edits.keys()) ids.add(key.split(':')[0])
+    return ids.size
+  }, [edits])
 
   const isLoading = loadStatus.state === 'parsing' || loadStatus.state === 'loading'
 
   return (
     <main>
-      <h1>reptool</h1>
-      <DropZone onFile={handleFile} disabled={isLoading} />
+      <h1>FIRE Reporting Tool</h1>
+      {!gridData && <DropZone onFile={handleFile} disabled={isLoading} />}
       <StatusBar
         status={loadStatus.state}
         loaded={loadStatus.loaded}
         total={loadStatus.total}
         hasPreview={hasPreview}
         module={module}
+        fileName={fileName}
+        editedCount={editedCount}
       />
       <DataGrid gridData={gridData} edits={edits} onEdit={handleEdit} onClear={handleClear} onDeleteRecords={handleDeleteRecords} module={module} />
     </main>

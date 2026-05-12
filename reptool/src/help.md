@@ -1,4 +1,4 @@
-# reptool Help
+# FIRE Reporting Tool Help
 
 ## Loading Data
 
