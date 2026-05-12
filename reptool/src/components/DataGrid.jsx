@@ -3,6 +3,7 @@ import { AgGridReact } from 'ag-grid-react'
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from 'ag-grid-community'
 import RecordPopup from './RecordPopup.jsx'
 import FormViewPopup from './FormViewPopup.jsx'
+import HelpPopup from './HelpPopup.jsx'
 import rawMeta from '../data/recordMeta.json'
 
 const metaByRecord = Object.fromEntries(rawMeta.map(m => [m.record, m]))
@@ -59,6 +60,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
   const [clearInput, setClearInput] = useState('')
   const [clearError, setClearError] = useState(false)
   const [spacing, setSpacing] = useState('comfortable')
+  const [showHelp, setShowHelp] = useState(false)
 
   // Rebuilds the AG Grid theme whenever the row spacing preference changes
   const gridTheme = useMemo(
@@ -557,6 +559,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
           onClose={() => setFormPopup(null)}
         />
       )}
+      {showHelp && <HelpPopup onClose={() => setShowHelp(false)} />}
       <div className="grid-toolbar">
         <div className="row-info-bar">
           {hoveredRow && (
@@ -733,6 +736,15 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
               >
                 <span className="toolbar-menu__check" />
                 Clear data
+              </button>
+              <div className="toolbar-menu__divider" />
+              <button
+                type="button"
+                className="toolbar-menu__item"
+                onClick={() => { setShowMenu(false); setShowHelp(true) }}
+              >
+                <span className="toolbar-menu__check" />
+                Help
               </button>
             </div>
           )}
