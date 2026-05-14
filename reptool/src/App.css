@@ -1047,6 +1047,142 @@ h1 {
   border-color: transparent;
 }
 
+.form-popup__select {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  width: 100%;
+  background: #fff;
+  cursor: pointer;
+}
+
+.form-popup__select:focus {
+  outline: 2px solid #7c3aed;
+  border-color: transparent;
+}
+
+.form-popup__field--transfer {
+  align-items: flex-start;
+}
+
+.form-popup__field--transfer .form-popup__label {
+  padding-top: 0.2rem;
+}
+
+/* Inline transfer field (used inside FormViewPopup) */
+.inline-transfer {
+  width: 100%;
+}
+
+.inline-transfer__panels {
+  display: flex;
+  gap: 0.4rem;
+  align-items: flex-start;
+}
+
+.inline-transfer__panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.inline-transfer__panel-header {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.2rem;
+}
+
+.inline-transfer__search {
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.8rem;
+  outline: none;
+  margin-bottom: 0.2rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.inline-transfer__search:focus {
+  border-color: #93c5fd;
+}
+
+.inline-transfer__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  height: 150px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+}
+
+.inline-transfer__item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.22rem 0.4rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.inline-transfer__item:hover {
+  background: #eff6ff;
+}
+
+.inline-transfer__item--selected {
+  justify-content: space-between;
+}
+
+.inline-transfer__item--selected:hover {
+  background: #fef2f2;
+}
+
+.inline-transfer__code {
+  font-weight: 700;
+  color: #1d4ed8;
+  min-width: 1.8rem;
+  flex-shrink: 0;
+}
+
+.inline-transfer__name {
+  color: #374151;
+  text-align: left;
+}
+
+.inline-transfer__label {
+  color: #374151;
+  text-align: left;
+  flex: 1;
+}
+
+.inline-transfer__remove {
+  font-size: 0.65rem;
+  color: #dc2626;
+  flex-shrink: 0;
+}
+
+.inline-transfer__arrow {
+  align-self: center;
+  font-size: 1rem;
+  color: #9ca3af;
+  flex-shrink: 0;
+  margin-top: 2.8rem;
+}
+
+.inline-transfer__empty {
+  padding: 0.3rem 0.4rem;
+  font-size: 0.78rem;
+  color: #9ca3af;
+}
+
 .form-popup__footer {
   display: flex;
   justify-content: flex-end;

@@ -11,6 +11,7 @@ import { CRS_STATUSES } from '../data/crsStatuses.js'
 import { ACCOUNT_NUMBER_TYPES } from '../data/accountNumberTypes.js'
 import { ACCOUNT_TYPES } from '../data/accountTypes.js'
 import TransferListPopup from './TransferListPopup.jsx'
+import { FIELD_EDITOR_TYPES } from '../data/fieldEditorTypes.js'
 import rawMeta from '../data/recordMeta.json'
 
 const BASE_URL = 'http://localhost:8765'
@@ -93,20 +94,7 @@ function EditingCell({ value, onCommit, onCancel }) {
 }
 
 
-// Columns that open a dedicated popup editor instead of the inline text input.
-// Key = header field name, value = popup type identifier.
-const POPUP_EDITOR_COLS = {
-  'AH TIN Country Code': 'country',
-  'AH Country Code': 'country',
-  'AH Country code': 'country',
-  'CP Country code': 'country',
-  'AH FATCA Status': 'fatcaStatus',
-  'AH CRS Status': 'crsStatus',
-  'Account Number Type': 'accountNumberType',
-  'Account Type': 'accountType',
-  'AH Tax Residence Country': 'transferCountry',
-  'CP Tax residences': 'transferCountry',
-}
+const POPUP_EDITOR_COLS = FIELD_EDITOR_TYPES
 
 export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRecords, module }) {
   const [editingCell, setEditingCell] = useState(null)
