@@ -3,6 +3,33 @@
 ## Unreleased
 
 ### Added
+- **Popup cell editors** — double-clicking a cell in designated columns opens a floating editor instead of the inline text input:
+  - Country selector (autocomplete, ISO 3166-1 alpha-2): `AH TIN Country Code`, `AH Country Code`, `AH Country code`, `CP Country code`
+  - FATCA Status selector: `AH FATCA Status`
+  - CRS Status selector: `AH CRS Status`
+  - Account Type selector: `Account Type`
+  - Account Number Type selector: `Account Number Type`
+  - Transfer list (dual-panel country picker): `AH Tax Residence Country`, `CP Tax residences`
+- **Inline editors in Form View popup** — same columns now render appropriate controls inside the form: `<select>` for fixed lists, collapsible inline transfer list for tax residence columns
+- **Local pre-validation** — before calling the backend, validates all target rows for: invalid selector values, non-numeric values in number columns, invalid date format (must be `yyyy-mm-dd` or `yyyy/mm/dd`), and invalid country codes in tax residence columns; flags rows in the grid and shows an error bar without hitting the backend
+- **`FIELD_EDITOR_TYPES`** shared mapping (`src/data/fieldEditorTypes.js`) used by both DataGrid and FormViewPopup to determine editor type per column
+- Country, FATCA, CRS, account type, and account number type data files added under `src/data/`
+
+### Fixed
+- Polling loop now waits for `VALIDATED` or `READY` state (was checking for `STARTED`, missing `CREATED`)
+- `Show errors only` and `filterMode=errors` now use the API `validationErrors` map instead of scanning cell text for the word "error"
+- Record popup scrollable when error list is long: height capped dynamically to available viewport space below the anchor cell
+- Inline cell editor: arrow keys, `Home`, and `End` now work correctly by suppressing AG Grid's key handling via `suppressKeyboardEvent`
+- Popup editors (country, list, transfer) close on `Escape` or click outside
+
+### Changed
+- Record popup title unified to single red string `"Record #X ISSUES"`; section label removed
+- Error list styled as decimal numbered list, black text, no coloured background
+- Record popup `max-width` increased 20% (320 → 384 px)
+- FormViewPopup width increased 25% (520 → 650 px); label/input ratio changed to `4fr 7fr`
+- Transfer list field in form view shows comma-separated codes by default; expands to full transfer list on **Edit**, collapses via **Collapse** button
+
+### Added
 - **Validate and Process** — new menu option (always enabled) opens a confirmation dialog showing the total grid record count; input must match the total before OK is accepted; mismatch shows a red error label; processing stub ready for implementation
 - **Validate Selected** — new menu option enabled only when Record selection mode is active and at least one record is checked; disabled state is visually grayed out
 - **Delete selected records** — hovering the selected count in the toolbar reveals a red "delete" link; clicking opens a confirmation dialog with a "Number of Records to Delete" input; OK is blocked until the typed number matches the selected count (mismatch shows a red error label); on confirmation, records are removed from the grid and their pending edits are cleaned up; selection state is fully reset
