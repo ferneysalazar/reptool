@@ -6,12 +6,62 @@ import FormViewPopup from './FormViewPopup.jsx'
 import HelpPopup from './HelpPopup.jsx'
 import rawMeta from '../data/recordMeta.json'
 
+const BASE_URL = 'http://localhost:8765'
+const VALIDATE_URL = `${BASE_URL}/fire/dataForm/validateAndProcess`
+const POLL_INTERVAL_MS = 3000
+
+// Maps column index (0-based, matching fatcaCrsModuleColumns order) to API payload field name
+const COL_TO_API = [
+  'firstName', 'lastName', 'entityName', 'dateBirth',
+  'taxResidenceCountry', 'countryIdTIN', 'countryCode',
+  'status', 'crsStatus',
+  'fixAddressBuilding', 'fixAddressStreetName', 'fixAddressFloor', 'fixAddressSuite',
+  'fixAddressCity', 'fixAddressState', 'fixAddressPostal', 'fixAddressCountryCode',
+  'freeAddress', 'freeAddressCountryCode',
+  'entityControllingPersonFirstName', 'entityControllingPersonLastName',
+  'entityControllingPersonDateBirth', 'entityControllingPersonCountryIdTIN',
+  'entityControllingPersonCountryCode', 'entityControllingPersonType',
+  'entityControllingPersonTaxResidence',
+  'entityControllingPersonFixAddressBuilding', 'entityControllingPersonFixAddressStreetName',
+  'entityControllingPersonFixAddressFloor', 'entityControllingPersonFixAddressSuite',
+  'entityControllingPersonFixAddressCity', 'entityControllingPersonFixAddressState',
+  'entityControllingPersonFixAddressPostal', 'entityControllingPersonFixAddressCountryCode',
+  'entityControllingPersonFreeAddress', 'entityControllingPersonFreeAddressCountryCode',
+  'accountNumber', 'currencyCode', 'accountBalance', 'balanceAsOfDate',
+  'accountType', 'accountNumberType', 'openingDate', 'closingDate',
+  'balanceInterest', 'balanceInterestDate',
+  'balanceGrossProceeds', 'balanceGrossProceedsDate',
+  'balanceDividends', 'balanceDividendsDate',
+  'balanceOthers', 'balanceOthersDate',
+]
+
+function buildPayload(rows, headers, module, institutionUkId, reportingYear, onlyValidate) {
+  const listDataForm = rows.map(row => {
+    const item = {
+      info: '', numberRow: row.recordId, uniqueKeyId: '',
+      entityControllingPersonUniqueKeyId: '', entityControllingPersonAddressType: '',
+      accountUniqueKeyId: '', fails: {},
+    }
+    headers.forEach((headerName, idx) => {
+      const apiField = COL_TO_API[idx]
+      if (apiField) item[apiField] = row[headerName] ?? ''
+    })
+    return item
+  })
+  return {
+    listDataForm,
+    isDeleteAll: true,
+    isFatcaModule: module === 'fatca',
+    institutionUkId,
+    reportingYear: Number(reportingYear),
+    onlyValidate,
+  }
+}
+
 const metaByRecord = Object.fromEntries(rawMeta.map(m => [m.record, m]))
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
-// Returns true if a cell value contains the word "error" (case-insensitive)
-const hasError = (val) => String(val ?? '').toLowerCase().includes('error')
 
 // Inline text input rendered inside a cell when the user double-clicks to edit
 function EditingCell({ value, onCommit, onCancel }) {
@@ -55,8 +105,14 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
   const [deleteInput, setDeleteInput] = useState('')
   const [deleteError, setDeleteError] = useState(false)
   const [showProcessDialog, setShowProcessDialog] = useState(false)
+  const [processMode, setProcessMode] = useState('all') // 'all' | 'selected'
   const [processInput, setProcessInput] = useState('')
   const [processError, setProcessError] = useState(false)
+  const [institutionUkId, setInstitutionUkId] = useState('')
+  const [reportingYear, setReportingYear] = useState('')
+  const [validateLoading, setValidateLoading] = useState(false)
+  const [validateResult, setValidateResult] = useState(null)
+  const [validationErrors, setValidationErrors] = useState(new Map()) // recordId → string[]
   const [clearInput, setClearInput] = useState('')
   const [clearError, setClearError] = useState(false)
   const [spacing, setSpacing] = useState('comfortable')
@@ -136,8 +192,8 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
       },
     }
 
-    // Returns true if any cell in the row contains an error value
-    const rowHasError = (data) => data && Object.values(data).some(hasError)
+    const rowIsErrored = (data) =>
+      Array.isArray(data?.__validationErrors__) && data.__validationErrors__.length > 0
 
     // Fixed row-number column: highlights the row red if any cell has an error,
     // and shows a form-view icon when form view mode is enabled
@@ -152,24 +208,32 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
       suppressMovable: true,
       cellStyle: (params) => ({
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        ...(rowHasError(params.data) ? { background: '#fff1f1', color: '#dc2626' } : {}),
+        ...(rowIsErrored(params.data) ? { background: '#fff1f1', color: '#dc2626' } : {}),
       }),
       cellRenderer: (params) => {
         const num = params.value
         const meta = metaByRecord[num]
+        const validErrs = params.data.__validationErrors__
+        const hasValidErrs = Array.isArray(validErrs) && validErrs.length > 0
+        const isClickable = hasValidErrs || !!meta
         const showFormIcon = allowFormViewRef.current && hoveredRecordIdRef.current === num
-        // Opens the record detail popup anchored to the clicked cell
+        // Opens a popup anchored to the clicked cell; validation errors take priority over static meta
         function handleClick(e) {
-          if (!meta) return
+          if (!isClickable) return
           const rect = e.currentTarget.getBoundingClientRect()
-          setPopup({ meta, anchor: { top: rect.top, bottom: rect.bottom, left: rect.left } })
+          const anchor = { top: rect.top, bottom: rect.bottom, left: rect.left }
+          if (hasValidErrs) {
+            setPopup({ meta: { record: num, errorList: validErrs, warningList: [], modified: false }, anchor })
+          } else {
+            setPopup({ meta, anchor })
+          }
         }
         const numSpan = (
           <span
-            className={`row-num-plain${meta ? ' row-num-plain--clickable' : ''}`}
-            style={rowHasError(params.data) ? { color: '#dc2626' } : undefined}
-            onClick={meta ? handleClick : undefined}
-            title={meta ? 'Click to view details' : undefined}
+            className={`row-num-plain${isClickable ? ' row-num-plain--clickable' : ''}`}
+            style={rowIsErrored(params.data) ? { color: '#dc2626' } : undefined}
+            onClick={isClickable ? handleClick : undefined}
+            title={hasValidErrs ? 'Click to view validation errors' : meta ? 'Click to view details' : undefined}
           >
             {num}
           </span>
@@ -200,7 +264,6 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
         headerClass: rightAlign ? 'ag-right-aligned-header' : undefined,
         cellStyle: (params) => ({
           textAlign: rightAlign ? 'right' : 'left',
-          ...(hasError(params.value) ? { background: '#fff1f1' } : {}),
         }),
         cellRenderer: (params) => {
           const recordId = params.data.recordId
@@ -268,9 +331,8 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
       } else if (filterMode === 'edited') {
         result = result.filter(row => editedIds.has(row.recordId))
       } else if (filterMode === 'errors') {
-        result = result.filter(row => headers.some(h => hasError(row[h])))
+        result = result.filter(row => validationErrors.has(row.recordId))
       }
-      return result
     }
 
     // Filter rows by error flag and/or search term (both conditions must be satisfied when active).
@@ -278,15 +340,23 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
     if (showErrorsOnly || filterText) {
       const term = filterText.toLowerCase()
       result = result.filter(row => {
-        if (showErrorsOnly && !headers.some(h => hasError(row[h]))) return false
+        if (showErrorsOnly && !validationErrors.has(row.recordId)) return false
         if (!filterText) return true
         const rowText = headers.map(h => String(row[h] ?? '')).join(' ').toLowerCase()
         return rowText.includes(term)
       })
     }
 
+    // Overlay validation error arrays onto rows returned by the server
+    if (validationErrors.size > 0) {
+      result = result.map(row => {
+        const errs = validationErrors.get(row.recordId)
+        return errs ? { ...row, __validationErrors__: errs } : row
+      })
+    }
+
     return result
-  }, [gridData, edits, showErrorsOnly, filterText, filterMode, editedIds, selectedCount])
+  }, [gridData, edits, showErrorsOnly, filterText, filterMode, editedIds, selectedCount, validationErrors])
 
   // Puts a cell into editing mode on double-click
   const onCellDoubleClicked = useCallback((params) => {
@@ -392,16 +462,69 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
     setDeleteError(false)
   }
 
-  // Validates the process count input and, if it matches the total grid records, proceeds
-  function handleProcessConfirm() {
-    if (parseInt(processInput, 10) !== rowData.length) {
+  // Validates the process count input and, if it matches the expected count, calls the API then polls for completion
+  async function handleProcessConfirm() {
+    const isSelected = processMode === 'selected'
+    const targetRows = isSelected
+      ? rowData.filter(r => selectedIdsRef.current.has(r.recordId))
+      : rowData
+    const expectedCount = isSelected ? selectedCount : rowData.length
+
+    if (parseInt(processInput, 10) !== expectedCount) {
       setProcessError(true)
       return
     }
-    // TODO: trigger actual validation and processing
     setShowProcessDialog(false)
     setProcessInput('')
     setProcessError(false)
+    setValidateLoading(true)
+    setValidateResult({ phase: 'sending' })
+    setValidationErrors(new Map())
+
+    try {
+      const payload = buildPayload(targetRows, gridData.headers, module, institutionUkId, reportingYear, isSelected)
+      console.log('[validateAndProcess] mode:', processMode, 'rows:', targetRows.length, 'payload:', payload)
+
+      const res = await fetch(VALIDATE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        setValidateResult({ phase: 'error', message: `Server error ${res.status}: ${text}` })
+        return
+      }
+
+      const data = await res.json()
+      const pollPath = data.url          // e.g. "/dataForm/checkDataFormProcess?id=24"
+      const processId = data.response?.processId
+
+      let state = data.response?.state
+      let errors = data.response?.errorList ?? []
+
+      while (state !== 'VALIDATED' && state !== 'READY') {
+        setValidateResult({ phase: 'polling', processId })
+        await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS))
+        const pollRes = await fetch(BASE_URL + pollPath)
+        if (!pollRes.ok) throw new Error(`Poll error ${pollRes.status}`)
+        const pollData = await pollRes.json()
+        state  = pollData.response?.state
+        errors = pollData.response?.errorList ?? []
+      }
+
+      // READY = success, VALIDATED = done (errors possible); populate grid with error info
+      if (errors.length > 0) {
+        const errMap = new Map()
+        errors.forEach(e => errMap.set(Number(e.record), e.errors))
+        setValidationErrors(errMap)
+      }
+      setValidateResult({ phase: 'done', state, errors, onlyValidate: isSelected })
+    } catch (err) {
+      setValidateResult({ phase: 'error', message: err.message })
+    } finally {
+      setValidateLoading(false)
+    }
   }
 
   // Validates the clear count input and, if it matches the total loaded records, clears all data
@@ -413,6 +536,8 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
     setShowConfirm(false)
     setClearInput('')
     setClearError(false)
+    setValidationErrors(new Map())
+    setValidateResult(null)
     onClear()
   }
 
@@ -522,15 +647,41 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
       {showProcessDialog && (
         <div className="confirm-overlay">
           <div className="confirm-dialog">
-            <p className="confirm-dialog__message">You are about to ingest and process {rowData.length} record{rowData.length !== 1 ? 's' : ''}.</p>
+            <p className="confirm-dialog__message">
+              {processMode === 'selected'
+                ? `You are about to validate ${selectedCount} selected record${selectedCount !== 1 ? 's' : ''}.`
+                : `You are about to ingest and process ${rowData.length} record${rowData.length !== 1 ? 's' : ''}.`}
+            </p>
             <div className="delete-dialog__field">
-              <label className="delete-dialog__label" htmlFor="process-count-input">Number of Records to Process</label>
+              <label className="delete-dialog__label" htmlFor="process-institution-input">Institution UK ID</label>
+              <input
+                id="process-institution-input"
+                type="text"
+                className="delete-dialog__input"
+                value={institutionUkId}
+                autoFocus
+                placeholder="e.g. 24"
+                onChange={e => setInstitutionUkId(e.target.value)}
+              />
+            </div>
+            <div className="delete-dialog__field">
+              <label className="delete-dialog__label" htmlFor="process-year-input">Reporting Year</label>
+              <input
+                id="process-year-input"
+                type="number"
+                className="delete-dialog__input"
+                value={reportingYear}
+                placeholder="e.g. 2026"
+                onChange={e => setReportingYear(e.target.value)}
+              />
+            </div>
+            <div className="delete-dialog__field">
+              <label className="delete-dialog__label" htmlFor="process-count-input">{processMode === 'selected' ? 'Number of Selected Records to Validate' : 'Number of Records to Process'}</label>
               <input
                 id="process-count-input"
                 type="text"
                 className="delete-dialog__input"
                 value={processInput}
-                autoFocus
                 onChange={e => { setProcessInput(e.target.value); setProcessError(false) }}
                 onKeyDown={e => e.key === 'Enter' && handleProcessConfirm()}
               />
@@ -560,6 +711,22 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
         />
       )}
       {showHelp && <HelpPopup onClose={() => setShowHelp(false)} />}
+      {validateResult && (
+        <div className={`validate-result-bar${validateResult.phase === 'error' || (validateResult.phase === 'done' && validateResult.errors?.length > 0) ? ' validate-result-bar--error' : ''}`}>
+          {validateResult.phase === 'sending' && <span>Sending to server…</span>}
+          {validateResult.phase === 'polling' && <span>Processing… polling process #{validateResult.processId}</span>}
+          {validateResult.phase === 'done' && validateResult.errors.length === 0 && (
+            <span>✓ {validateResult.onlyValidate ? 'Validation' : 'Process'} completed successfully</span>
+          )}
+          {validateResult.phase === 'done' && validateResult.errors.length > 0 && (
+            <span>✗ {validateResult.onlyValidate ? 'Validation' : 'Process'} completed — some issues found in {validateResult.errors.length} record{validateResult.errors.length !== 1 ? 's' : ''} (see grid)</span>
+          )}
+          {validateResult.phase === 'error' && <span>✗ {validateResult.message}</span>}
+          {(validateResult.phase === 'done' || validateResult.phase === 'error') && (
+            <button className="btn btn--ghost" style={{ marginLeft: 12, padding: '2px 10px', fontSize: 12 }} onClick={() => setValidateResult(null)}>Dismiss</button>
+          )}
+        </div>
+      )}
       <div className="grid-toolbar">
         <div className="row-info-bar">
           {hoveredRow && (
@@ -698,7 +865,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
                 type="button"
                 className="toolbar-menu__item"
                 disabled={!allowSelection || selectedCount === 0}
-                onClick={() => {}}
+                onClick={() => { setShowMenu(false); setProcessMode('selected'); setShowProcessDialog(true); setProcessInput(''); setProcessError(false) }}
               >
                 <span className="toolbar-menu__check" />
                 Validate Selected
@@ -706,7 +873,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
               <button
                 type="button"
                 className="toolbar-menu__item"
-                onClick={() => { setShowMenu(false); setShowProcessDialog(true); setProcessInput(''); setProcessError(false) }}
+                onClick={() => { setShowMenu(false); setProcessMode('all'); setShowProcessDialog(true); setProcessInput(''); setProcessError(false) }}
               >
                 <span className="toolbar-menu__check" />
                 Validate and Process
