@@ -4,6 +4,7 @@ import { COUNTRIES } from '../data/countries.js'
 const BY_CODE = Object.fromEntries(COUNTRIES.map(c => [c.code, c.name]))
 
 export default function InlineTransferField({ value, onChange }) {
+  const [expanded, setExpanded] = useState(false)
   const [search, setSearch] = useState('')
 
   const selected = value
@@ -18,16 +19,24 @@ export default function InlineTransferField({ value, onChange }) {
     return c.code.toLowerCase().startsWith(q) || c.name.toLowerCase().includes(q)
   })
 
-  function add(code) {
-    onChange([...selected, code].join(','))
-  }
+  function add(code) { onChange([...selected, code].join(',')) }
+  function remove(code) { onChange(selected.filter(c => c !== code).join(',')) }
+  function collapse() { setExpanded(false); setSearch('') }
 
-  function remove(code) {
-    onChange(selected.filter(c => c !== code).join(','))
+  if (!expanded) {
+    return (
+      <div className="inline-transfer__collapsed">
+        <span className="inline-transfer__summary">{value || '—'}</span>
+        <button type="button" className="inline-transfer__expand-btn" onClick={() => setExpanded(true)}>Edit</button>
+      </div>
+    )
   }
 
   return (
     <div className="inline-transfer">
+      <div className="inline-transfer__toolbar">
+        <button type="button" className="inline-transfer__collapse-btn" onClick={collapse}>Collapse</button>
+      </div>
       <div className="inline-transfer__panels">
         <div className="inline-transfer__panel">
           <div className="inline-transfer__panel-header">Available</div>

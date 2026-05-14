@@ -958,7 +958,7 @@ h1 {
   background: #fff;
   border-radius: 10px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
-  width: 520px;
+  width: 650px;
   max-width: 95vw;
   max-height: 85vh;
   display: flex;
@@ -1008,7 +1008,7 @@ h1 {
 
 .form-popup__field {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 4fr 7fr;
   align-items: center;
   gap: 1rem;
 }
@@ -1072,6 +1072,58 @@ h1 {
 }
 
 /* Inline transfer field (used inside FormViewPopup) */
+.inline-transfer__collapsed {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.inline-transfer__summary {
+  flex: 1;
+  font-size: 0.82rem;
+  color: #374151;
+  word-break: break-all;
+  text-align: left;
+}
+
+.inline-transfer__expand-btn {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.6rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #f9fafb;
+  color: #374151;
+  cursor: pointer;
+}
+
+.inline-transfer__expand-btn:hover {
+  background: #e5e7eb;
+}
+
+.inline-transfer__toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.2rem;
+}
+
+.inline-transfer__collapse-btn {
+  font-size: 0.65rem;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #f9fafb;
+  color: #6b7280;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.inline-transfer__collapse-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
 .inline-transfer {
   width: 100%;
 }
