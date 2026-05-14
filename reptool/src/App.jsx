@@ -94,7 +94,7 @@ export default function App() {
   const isLoading = loadStatus.state === 'parsing' || loadStatus.state === 'loading'
 
   return (
-    <main>
+    <div className="reptool-root">
       <h1>FIRE Reporting Tool</h1>
       {!gridData && <DropZone onFile={handleFile} disabled={isLoading} />}
       <StatusBar
@@ -107,6 +107,6 @@ export default function App() {
         editedCount={editedCount}
       />
       <DataGrid gridData={gridData} edits={edits} onEdit={handleEdit} onClear={handleClear} onDeleteRecords={handleDeleteRecords} module={module} />
-    </main>
+    </div>
   )
 }
