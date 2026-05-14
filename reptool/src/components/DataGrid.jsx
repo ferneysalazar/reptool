@@ -98,6 +98,7 @@ function EditingCell({ value, onCommit, onCancel }) {
 const POPUP_EDITOR_COLS = {
   'AH TIN Country Code': 'country',
   'AH Country Code': 'country',
+  'CP Country code': 'country',
   'AH FATCA Status': 'fatcaStatus',
   'AH CRS Status': 'crsStatus',
   'Account Number Type': 'accountNumberType',
