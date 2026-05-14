@@ -24,18 +24,6 @@ h1 {
   font-weight: 600;
 }
 
-.app-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.app-header__fill-x {
-  font-size: 0.75rem;
-  padding: 0.2rem 0.7rem;
-  opacity: 0.6;
-}
-
 /* Drop Zone */
 .drop-zone {
   border: 2px dashed #aaa;
