@@ -4,6 +4,13 @@ import { AllCommunityModule, ModuleRegistry, themeQuartz } from 'ag-grid-communi
 import RecordPopup from './RecordPopup.jsx'
 import FormViewPopup from './FormViewPopup.jsx'
 import HelpPopup from './HelpPopup.jsx'
+import CountrySelectPopup from './CountrySelectPopup.jsx'
+import ListSelectPopup from './ListSelectPopup.jsx'
+import { FATCA_STATUSES } from '../data/fatcaStatuses.js'
+import { CRS_STATUSES } from '../data/crsStatuses.js'
+import { ACCOUNT_NUMBER_TYPES } from '../data/accountNumberTypes.js'
+import { ACCOUNT_TYPES } from '../data/accountTypes.js'
+import TransferListPopup from './TransferListPopup.jsx'
 import rawMeta from '../data/recordMeta.json'
 
 const BASE_URL = 'http://localhost:8765'
@@ -86,8 +93,22 @@ function EditingCell({ value, onCommit, onCancel }) {
 }
 
 
+// Columns that open a dedicated popup editor instead of the inline text input.
+// Key = header field name, value = popup type identifier.
+const POPUP_EDITOR_COLS = {
+  'AH TIN Country Code': 'country',
+  'AH Country Code': 'country',
+  'AH FATCA Status': 'fatcaStatus',
+  'AH CRS Status': 'crsStatus',
+  'Account Number Type': 'accountNumberType',
+  'Account Type': 'accountType',
+  'AH Tax Residence Country': 'transferCountry',
+  'CP Tax residences': 'transferCountry',
+}
+
 export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRecords, module }) {
   const [editingCell, setEditingCell] = useState(null)
+  const [popupEdit, setPopupEdit] = useState(null) // { recordId, colIdx, field, anchor }
   const [totalPages, setTotalPages] = useState(0)
   const [showToolbar, setShowToolbar] = useState(true)
   const [filterInput, setFilterInput] = useState('')
@@ -358,11 +379,19 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
     return result
   }, [gridData, edits, showErrorsOnly, filterText, filterMode, editedIds, selectedCount, validationErrors])
 
-  // Puts a cell into editing mode on double-click
+  // Puts a cell into editing mode on double-click; popup-editor columns open a floating popup
   const onCellDoubleClicked = useCallback((params) => {
-    if (!params.colDef.field) return
-    setEditingCell({ recordId: params.data.recordId, field: params.colDef.field })
-  }, [])
+    const field = params.colDef.field
+    if (!field) return
+    const recordId = params.data.recordId
+    if (POPUP_EDITOR_COLS[field]) {
+      const colIdx = gridData?.headers.indexOf(field) ?? -1
+      const rect = params.event.target.closest('.ag-cell')?.getBoundingClientRect() ?? params.event.target.getBoundingClientRect()
+      setPopupEdit({ recordId, colIdx, field, currentValue: params.value ?? '', anchor: { top: rect.top, bottom: rect.bottom, left: rect.left } })
+    } else {
+      setEditingCell({ recordId, field })
+    }
+  }, [gridData])
 
   // Wires up the top mirror scrollbar so it stays in sync with the AG Grid viewport
   const onGridReady = useCallback((params) => {
@@ -699,6 +728,58 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
           meta={popup.meta}
           anchor={popup.anchor}
           onClose={() => setPopup(null)}
+        />
+      )}
+      {popupEdit && POPUP_EDITOR_COLS[popupEdit.field] === 'country' && (
+        <CountrySelectPopup
+          value={popupEdit.currentValue}
+          anchor={popupEdit.anchor}
+          onCommit={(val) => { onEdit(popupEdit.recordId, popupEdit.colIdx, val); setPopupEdit(null) }}
+          onCancel={() => setPopupEdit(null)}
+        />
+      )}
+      {popupEdit && POPUP_EDITOR_COLS[popupEdit.field] === 'fatcaStatus' && (
+        <ListSelectPopup
+          items={FATCA_STATUSES}
+          value={popupEdit.currentValue}
+          anchor={popupEdit.anchor}
+          onCommit={(val) => { onEdit(popupEdit.recordId, popupEdit.colIdx, val); setPopupEdit(null) }}
+          onCancel={() => setPopupEdit(null)}
+        />
+      )}
+      {popupEdit && POPUP_EDITOR_COLS[popupEdit.field] === 'crsStatus' && (
+        <ListSelectPopup
+          items={CRS_STATUSES}
+          value={popupEdit.currentValue}
+          anchor={popupEdit.anchor}
+          onCommit={(val) => { onEdit(popupEdit.recordId, popupEdit.colIdx, val); setPopupEdit(null) }}
+          onCancel={() => setPopupEdit(null)}
+        />
+      )}
+      {popupEdit && POPUP_EDITOR_COLS[popupEdit.field] === 'accountNumberType' && (
+        <ListSelectPopup
+          items={ACCOUNT_NUMBER_TYPES}
+          value={popupEdit.currentValue}
+          anchor={popupEdit.anchor}
+          onCommit={(val) => { onEdit(popupEdit.recordId, popupEdit.colIdx, val); setPopupEdit(null) }}
+          onCancel={() => setPopupEdit(null)}
+        />
+      )}
+      {popupEdit && POPUP_EDITOR_COLS[popupEdit.field] === 'accountType' && (
+        <ListSelectPopup
+          items={ACCOUNT_TYPES}
+          value={popupEdit.currentValue}
+          anchor={popupEdit.anchor}
+          onCommit={(val) => { onEdit(popupEdit.recordId, popupEdit.colIdx, val); setPopupEdit(null) }}
+          onCancel={() => setPopupEdit(null)}
+        />
+      )}
+      {popupEdit && POPUP_EDITOR_COLS[popupEdit.field] === 'transferCountry' && (
+        <TransferListPopup
+          value={popupEdit.currentValue}
+          anchor={popupEdit.anchor}
+          onCommit={(val) => { onEdit(popupEdit.recordId, popupEdit.colIdx, val); setPopupEdit(null) }}
+          onCancel={() => setPopupEdit(null)}
         />
       )}
       {formPopup && (
