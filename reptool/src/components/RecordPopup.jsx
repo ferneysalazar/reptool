@@ -21,10 +21,13 @@ export default function RecordPopup({ meta, anchor, onClose }) {
     }
   }, [onClose])
 
-  // Position popup near the clicked cell
+  // Position popup near the clicked cell, capping height to available space below the anchor
+  const maxHeight = anchor
+    ? Math.max(180, window.innerHeight - anchor.bottom - 16)
+    : window.innerHeight * 0.7
   const style = anchor
-    ? { top: anchor.bottom + 6, left: Math.max(8, anchor.left) }
-    : {}
+    ? { top: anchor.bottom + 6, left: Math.max(8, anchor.left), maxHeight }
+    : { maxHeight }
 
   return (
     <div className="record-popup" ref={popupRef} style={style}>

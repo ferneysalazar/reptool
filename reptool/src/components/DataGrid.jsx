@@ -12,6 +12,7 @@ import { ACCOUNT_NUMBER_TYPES } from '../data/accountNumberTypes.js'
 import { ACCOUNT_TYPES } from '../data/accountTypes.js'
 import TransferListPopup from './TransferListPopup.jsx'
 import { FIELD_EDITOR_TYPES } from '../data/fieldEditorTypes.js'
+import { validateRows } from '../utils/localValidation.js'
 import rawMeta from '../data/recordMeta.json'
 
 const BASE_URL = 'http://localhost:8765'
@@ -75,7 +76,6 @@ ModuleRegistry.registerModules([AllCommunityModule])
 function EditingCell({ value, onCommit, onCancel }) {
   const inputRef = useRef(null)
 
-  // Commits on Enter, cancels on Escape
   function handleKeyDown(e) {
     if (e.key === 'Enter') onCommit(e.target.value)
     if (e.key === 'Escape') onCancel()
@@ -272,6 +272,12 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
         field: name,
         headerName: name,
         editable: false,
+        suppressKeyboardEvent: (params) => {
+          if (editingCell?.recordId === params.data?.recordId && editingCell?.field === name) {
+            return ['ArrowLeft', 'ArrowRight', 'Home', 'End', 'ArrowUp', 'ArrowDown'].includes(params.event.key)
+          }
+          return false
+        },
         headerClass: rightAlign ? 'ag-right-aligned-header' : undefined,
         cellStyle: (params) => ({
           textAlign: rightAlign ? 'right' : 'left',
@@ -493,6 +499,17 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
       setProcessError(true)
       return
     }
+    // Run local validation before hitting the backend
+    const localCheck = validateRows(targetRows, gridData.headers, gridData.colTypes ?? [])
+    if (!localCheck.valid) {
+      setShowProcessDialog(false)
+      setProcessInput('')
+      setProcessError(false)
+      setValidationErrors(localCheck.errors)
+      setValidateResult({ phase: 'localError', errorCount: localCheck.errors.size })
+      return
+    }
+
     setShowProcessDialog(false)
     setProcessInput('')
     setProcessError(false)
@@ -783,7 +800,10 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
       )}
       {showHelp && <HelpPopup onClose={() => setShowHelp(false)} />}
       {validateResult && (
-        <div className={`validate-result-bar${validateResult.phase === 'error' || (validateResult.phase === 'done' && validateResult.errors?.length > 0) ? ' validate-result-bar--error' : ''}`}>
+        <div className={`validate-result-bar${validateResult.phase === 'localError' || validateResult.phase === 'error' || (validateResult.phase === 'done' && validateResult.errors?.length > 0) ? ' validate-result-bar--error' : ''}`}>
+          {validateResult.phase === 'localError' && (
+            <span>✗ Local validation failed — {validateResult.errorCount} record{validateResult.errorCount !== 1 ? 's have' : ' has'} invalid values (see highlighted rows)</span>
+          )}
           {validateResult.phase === 'sending' && <span>Sending to server…</span>}
           {validateResult.phase === 'polling' && <span>Processing… polling process #{validateResult.processId}</span>}
           {validateResult.phase === 'done' && validateResult.errors.length === 0 && (
@@ -793,7 +813,7 @@ export default function DataGrid({ gridData, edits, onEdit, onClear, onDeleteRec
             <span>✗ {validateResult.onlyValidate ? 'Validation' : 'Process'} completed — some issues found in {validateResult.errors.length} record{validateResult.errors.length !== 1 ? 's' : ''} (see grid)</span>
           )}
           {validateResult.phase === 'error' && <span>✗ {validateResult.message}</span>}
-          {(validateResult.phase === 'done' || validateResult.phase === 'error') && (
+          {(validateResult.phase === 'done' || validateResult.phase === 'error' || validateResult.phase === 'localError') && (
             <button className="btn btn--ghost" style={{ marginLeft: 12, padding: '2px 10px', fontSize: 12 }} onClick={() => setValidateResult(null)}>Dismiss</button>
           )}
         </div>

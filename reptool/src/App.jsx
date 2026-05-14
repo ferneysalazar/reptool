@@ -2,6 +2,7 @@ import { useRef, useState, useCallback, useMemo } from 'react'
 import DropZone from './components/DropZone.jsx'
 import StatusBar from './components/StatusBar.jsx'
 import DataGrid from './components/DataGrid.jsx'
+import { FIELD_EDITOR_TYPES } from './data/fieldEditorTypes.js'
 import './App.css'
 
 export default function App() {
@@ -85,6 +86,30 @@ export default function App() {
     setLoadStatus({ state: 'idle', loaded: 0, total: 0 })
   }, [])
 
+  const handleFillX = useCallback(() => {
+    if (!gridData) return
+    const targetIdxs = gridData.headers
+      .map((h, i) => ({ h, i }))
+      .filter(({ h }) => {
+        const t = FIELD_EDITOR_TYPES[h]
+        return t === 'country' || t === 'transferCountry'
+      })
+      .map(({ i }) => i)
+    if (targetIdxs.length === 0) return
+    setEdits(prev => {
+      const next = new Map(prev)
+      for (const row of gridData.rows) {
+        for (const colIdx of targetIdxs) {
+          const key = `${row.recordId}:${colIdx}`
+          const header = gridData.headers[colIdx]
+          const current = prev.has(key) ? prev.get(key) : (row[header] ?? '')
+          next.set(key, String(current) + 'x')
+        }
+      }
+      return next
+    })
+  }, [gridData])
+
   const editedCount = useMemo(() => {
     const ids = new Set()
     for (const key of edits.keys()) ids.add(key.split(':')[0])
@@ -95,7 +120,14 @@ export default function App() {
 
   return (
     <main>
-      <h1>FIRE Reporting Tool</h1>
+      <div className="app-header">
+        <h1>FIRE Reporting Tool</h1>
+        {gridData && (
+          <button className="btn btn--ghost app-header__fill-x" onClick={handleFillX}>
+            Fill X
+          </button>
+        )}
+      </div>
       {!gridData && <DropZone onFile={handleFile} disabled={isLoading} />}
       <StatusBar
         status={loadStatus.state}

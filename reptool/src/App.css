@@ -24,6 +24,18 @@ h1 {
   font-weight: 600;
 }
 
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.app-header__fill-x {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.7rem;
+  opacity: 0.6;
+}
+
 /* Drop Zone */
 .drop-zone {
   border: 2px dashed #aaa;
@@ -552,6 +564,8 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .record-popup__header {
@@ -596,6 +610,9 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  min-height: 0;
+  overflow: hidden;
+  flex: 1;
 }
 
 .record-popup__section-label {
@@ -603,6 +620,7 @@ h1 {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  flex-shrink: 0;
 }
 
 .record-popup__section-label--error { color: #dc2626; }
@@ -615,6 +633,8 @@ h1 {
   flex-direction: column;
   gap: 0.2rem;
   text-align: left;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .record-popup__item {
